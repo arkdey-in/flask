@@ -1,0 +1,2 @@
+<!-- If logo is in static/images/ -->
+<img src="{{ url_for('static', filename='images/logo-ai.svg') }}" alt="Logo">

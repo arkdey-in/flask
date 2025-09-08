@@ -1,0 +1,31 @@
+{% extends "supAdmBase.html" %}
+
+{%block title %}Super Admin Dashboard | ARCHIVES OF CABINET AFFAIRS DEPARTMENT{% endblock%} 
+
+{%block content%}
+<div class="container-fluid-custom"> 
+
+    <div class="section-container"> 
+        <h1 class="page-title">Super Admin Profile Page</h1>
+    </div>
+
+    <div class="profile-card">
+        {% if superadmin %}
+        <p class="section-heading">User Information</p>
+        <ul class="user-info-list">
+          <li><strong>Hello:</strong> {{ superadmin['superadmin_name'] }}</li> 
+          <li><strong>Your Super Admin ID : </strong> {{ superadmin['superadmin_id'] }}</li> 
+          <li><strong>Your Super Admin Email : </strong> {{ superadmin['superadmin_email'] }}</li>
+        </ul>
+        {% else %}
+        <p class="text-center py-4 no-data-message">No user data available.</p>
+        {% endif %}
+    </div>
+
+    <div class="logout-container"> 
+      <a href="{{ url_for('main.supAdmLogout') }}" class="btn btn-logout"> Logout </a>
+    </div>
+
+</div>
+
+{% endblock %}

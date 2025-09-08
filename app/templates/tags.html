@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Tags | ARCHIVES OF CABINET AFFAIRS DEPARTMENT{% endblock %}
+
+
+
+{% block content %}
+<div class="container-fluid-custom">
+    <h1>TAGS</h1>
+    <h1>Document List</h1><div class="breadcrumb">
+        <a href="{{ url_for('main.admDashboard') }}">Dashboard</a> &raquo;
+        <a href="{{ url_for('main.tags') }}">Tags</a> &raquo;
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="alert-messages-container">
+                {% for category , message in messages %}
+                    <div role="alert" class="alert-message {{ category }}">
+                        <span>{{ message }}</span>
+                        <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';" aria-label="Close">&times;</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="add-category-form-card">
+        <form action="/master/tags/add" method="POST">
+            <div class="mb-3">
+                <label for="tagName" class="form-label">Tag Name</label>
+                <input
+                    type="text"
+                    name="tagName"
+                    id="tagName"
+                    class="form-control"
+                    placeholder="e.g., Important, Urgent, Draft, Final"
+                    required
+                />
+            </div>
+            <button type="submit" class="btn btn-grd-primary px-4">Add Tag</button>
+        </form>
+    </div>
+
+    <div class="category-list-table-card">
+        <table class="category-list-table">
+            <thead>
+                <tr>
+                    <th>#Id</th>
+                    <th>Tag Name</th>
+                    <th>Created On</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tag in all_tags %}
+                <tr>
+                    <td data-label="#Id">{{ tag.t_id }}</td>
+                    <td data-label="Tag Name">{{ tag.tag_name }}</td>
+                    <td data-label="Created On">{{ tag.t_created_at }}</td>
+                    <td>
+                        <!-- Edit Button -->
+                        <span>
+                            <button
+                                class="btn-action btn-edit"
+                                onclick="openEditModal({{ tag.t_id }}, '{{ tag.tag_name }}')"
+                            >
+                                <i class="material-icons-outlined">edit</i>Edit
+                            </button>
+                        </span>
+
+                        <!-- Delete Form -->
+                        <span>
+                            <form action="/master/tags/delete/{{ tag.t_id }}" method="POST" class="d-inline-block">
+                                <button
+                                    type="submit"
+                                    class="btn-action btn-delete"
+                                    onclick="return confirm('Are you sure you want to delete Tag ID {{ tag.t_id }} ({{ tag.tag_name }})?');"
+                                >
+                                    <i class="material-icons-outlined">delete</i>Delete
+                                </button>
+                            </form>
+                        </span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center py-4">No tags found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal-custom">
+        <div class="modal-content-custom">
+            <span class="modal-close-button" onclick="closeEditModal()">&times;</span>
+            <h3>Edit Tag</h3>
+            <form id="editForm" method="POST">
+                <input type="hidden" name="id" id="editCategoryId" />
+                <div class="mb-3">
+                    <label for="editCategoryName" class="form-label">Tag Name</label>
+                    <input
+                        type="text"
+                        name="tagName"
+                        id="editCategoryName"
+                        class="form-control"
+                        required
+                    />
+                </div>
+                <button type="submit" class="btn-submit">Update</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let modal = document.getElementById("editModal");
+
+        function openEditModal(id, name) {
+            document.getElementById("editCategoryId").value = id;
+            document.getElementById("editCategoryName").value = name;
+            document.getElementById("editForm").action =
+                "/master/tags/edit/" + id;
+            modal.style.display = "flex";
+        }
+
+        function closeEditModal() {
+            modal.style.display = "none";
+            document.getElementById("editForm").reset();
+        }
+
+        window.onclick = function (event) {
+            if (event.target === modal) {
+                closeEditModal();
+            }
+        };
+
+        window.onload = function () {
+            closeEditModal();
+        };
+    </script>
+</div>
+{% endblock %}

@@ -1,0 +1,239 @@
+{
+  "1. Personal & Citizenship Documents": {
+    "Identity & Address Proof": [
+      "Aadhaar Card",
+      "PAN Card",
+      "Passport",
+      "Voter ID Card",
+      "Driving License"
+    ],
+    "Life Events & Status": [
+      "Birth Certificate",
+      "Death Certificate",
+      "Marriage Certificate",
+      "Domicile Certificate",
+      "Ration Card",
+      "Caste Certificate (SC/ST/OBC/EWS)"
+    ]
+  },
+  "2. Educational & Academic Documents": {
+    "High School Level": [
+      "Class 10th Mark Sheet",
+      "Class 12th Mark Sheet",
+      "Pass Certificate",
+      "Transfer Certificate (TC)",
+      "Admit Card",
+      "Character Certificate"
+    ],
+    "College & University Level": [
+      "Degree Certificate",
+      "Diploma Certificate",
+      "Provisional Certificate",
+      "Academic Transcripts",
+      "Entrance Exam Scorecards (CUET, JEE, etc.)"
+    ]
+  },
+  "3. Employment & Service Documents": {
+    "Joining & Service": [
+      "Offer Letter",
+      "Employment Contract",
+      "Experience Certificate",
+      "Relieving Letter",
+      "Employee ID"
+    ],
+    "Salary & Compliance": [
+      "Salary Slips",
+      "Form 16 (TDS Certificate)",
+      "Provident Fund (PF) Documents",
+      "ESI Documents"
+    ]
+  },
+  "4. Agriculture Sector": {
+    "Land & Ownership": [
+      "Land Records (Patta/Khatauni/7/12 Extract)",
+      "Sale Deed",
+      "Mutation Certificate"
+    ],
+    "Farming & Schemes": [
+      "Kisan Credit Card (KCC)",
+      "Soil Health Card",
+      "Crop Insurance (PMFBY) Documents",
+      "Seed & Fertilizer Purchase Bills"
+    ]
+  },
+  "5. Healthcare Sector": {
+    "Institutional": [
+      "Clinical Establishment Registration",
+      "Bio-Medical Waste Management Authorization",
+      "Fire Department NOC"
+    ],
+    "Patient & Professional": [
+      "Patient Medical Records",
+      "Informed Consent Forms",
+      "Doctors' Registration Certificates (State Medical Council)"
+    ]
+  },
+  "6. Manufacturing Sector": {
+    "Licensing": [
+      "Factory License",
+      "Industrial License",
+      "Environmental Clearances",
+      "Consent to Operate"
+    ],
+    "Operational": [
+      "Quality Control (QC) Records",
+      "Standard Operating Procedures (SOPs)",
+      "Material Safety Data Sheets (MSDS)"
+    ]
+  },
+  "7. Real Estate & Construction Sector": {
+    "Project Approval": [
+      "RERA Registration",
+      "Building Plan Sanction",
+      "Commencement Certificate"
+    ],
+    "Property Title & Handover": [
+      "Sale Deed",
+      "Encumbrance Certificate (EC)",
+      "Occupancy/Completion Certificate"
+    ]
+  },
+  "8. Information Technology (IT) & ITES": {
+    "Client & Service": [
+      "Master Service Agreement (MSA)",
+      "Statement of Work (SOW)",
+      "Service Level Agreement (SLA)"
+    ],
+    "Legal & Compliance": [
+      "Non-Disclosure Agreement (NDA)",
+      "Software Licensing Agreements",
+      "Data Protection Policies"
+    ]
+  },
+  "9. Financial Services": {
+    "Banking": [
+      "KYC Documents",
+      "Account Opening Forms",
+      "Loan Agreements",
+      "Cancelled Cheques",
+      "Bank Statements"
+    ],
+    "Insurance & Securities": [
+      "Insurance Policies",
+      "Claim Forms",
+      "Demat Account Statements",
+      "Share Certificates"
+    ]
+  },
+  "10. Retail & E-commerce Sector": {
+    "Licensing": [
+      "Shop & Establishment License",
+      "FSSAI License",
+      "Trade License"
+    ],
+    "Operational": [
+      "Vendor Agreements",
+      "Website Terms of Service",
+      "Privacy Policy",
+      "GST Invoices",
+      "Receipts",
+      "General Receipts",
+      "Quotation"
+    ]
+  },
+  "11. Hospitality & Tourism Sector": {
+    "Licensing": [
+      "Hotel License",
+      "FSSAI License",
+      "Liquor License",
+      "Fire Safety Certificate"
+    ],
+    "Operational": [
+      "Guest Registration Records (C-Form)",
+      "Travel Agent License",
+      "Tour Operator License"
+    ]
+  },
+  "12. Media & Entertainment Sector": {
+    "Certification & Licensing": [
+      "CBFC Certificate",
+      "Broadcasting License",
+      "RNI Registration"
+    ],
+    "Legal": [
+      "Copyright Agreements",
+      "Artist Contracts",
+      "Music Rights Licenses"
+    ]
+  },
+  "13. Government & Public Sector": {
+    "Official Communication": [
+      "Government Orders (GOs)",
+      "Gazette Notifications",
+      "Official Circulars",
+      "File Notings"
+    ],
+    "Procurement & Planning": [
+      "Tender Documents",
+      "Annual Budgets",
+      "Audit Reports from C&AG"
+    ]
+  },
+  "14. Legal & Judiciary Documents": {
+    "Documents": [
+      "Court Affidavit",
+      "FIR Copy",
+      "Police Clearance Certificate",
+      "Notarized Agreement",
+      "Power of Attorney",
+      "Court Summons",
+      "Bail Bond",
+      "Legal Notice",
+      "Court Judgments"
+    ]
+  },
+  "15. Transportation & Vehicle Documents": {
+    "Documents": [
+      "Vehicle Registration Certificate (RC)",
+      "Pollution Under Control (PUC) Certificate",
+      "Vehicle Insurance",
+      "Road Tax Receipts",
+      "FASTag Statement"
+    ]
+  },
+  "16. Import/Export & Trade Documents": {
+    "Documents": [
+      "Import Export Code (IEC)",
+      "Bill of Lading",
+      "Commercial Invoice",
+      "Packing List",
+      "Customs Clearance Certificate"
+    ]
+  },
+  "17. NGO & Trust Documents": {
+    "Documents": [
+      "Society Registration Certificate",
+      "Trust Deed",
+      "FCRA Registration",
+      "80G Certificate",
+      "12A Certificate"
+    ]
+  },
+  "18. Environmental & Infrastructure Compliance": {
+    "Documents": [
+      "Environmental Impact Assessment (EIA) Report",
+      "Forest Clearance Certificate",
+      "Wildlife Clearance Certificate",
+      "Energy Audit Report"
+    ]
+  },
+  "19. Taxation Documents": {
+    "Documents": [
+      "GST Return (GSTR-1, GSTR-3B)",
+      "Income Tax Return Acknowledgement",
+      "TAN Certificate",
+      "Form 26AS",
+      "Tax Audit Report"
+    ]
+  }
+}

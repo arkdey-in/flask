@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="blue-theme">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}{% endblock%}</title>
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='assets/images/favicon-32x32.png') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='assets/css/pace.min.css') }}"
+    />
+    <script src="{{ url_for('static', filename='assets/js/pace.min.js') }}"></script>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='assets/plugins/perfect-scrollbar/css/perfect-scrollbar.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='assets/plugins/metismenu/metisMenu.min.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='assets/plugins/metismenu/mm-vertical.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='assets/plugins/simplebar/css/simplebar.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='assets/css/bootstrap.min.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='assets/css/bootstrap-extended.css') }}"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css?family=Material+Icons+Outlined"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='sass/main.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='assets/css/horizontal-menu.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='sass/dark-theme.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='sass/blue-theme.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='sass/semi-dark.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='sass/bordered-theme.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='sass/responsive.css') }}"
+    />
+
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/base.css') }}"
+    />
+
+    <style>
+      /*
+        Fix for footer overlapping main content.
+        This ensures the main content area takes up at least the remaining
+        vertical space, pushing the footer to the bottom.
+      */
+      body {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh; /* Ensure body takes full viewport height */
+      }
+
+      .main-wrapper {
+        flex-grow: 1; /* Allow main content to grow and fill available space */
+        padding-top: 20px; /* Add some padding to the top of the main content if needed */
+        padding-bottom: 20px; /* Add some padding to the bottom of the main content */
+      }
+
+      /*
+        IMPORTANT: For 'blue-theme', 'semi-dark', and 'bordered-theme' to work,
+        you need to define their styles in their respective SASS/CSS files.
+        Example for sass/blue-theme.css:
+        html[data-bs-theme="blue-theme"] {
+          --bs-body-bg: #e0f2f7; /* Example: light blue background */
+          --bs-body-color: #1b4965; /* Example: dark text color */
+          --bs-primary: #007bff; /* Example: Bootstrap's default primary blue */
+          --bs-primary-rgb: 0, 123, 255;
+          /* Add more CSS variable overrides as needed for your custom theme */
+        }
+
+        For Bootstrap's built-in 'light' and 'dark' themes, Bootstrap's own CSS
+        (bootstrap.min.css) handles most of the changes when data-bs-theme is set.
+        You only need specific overrides in dark-theme.css if you want to customize
+        Bootstrap's default dark mode behavior.
+      */
+    </style>
+  </head>
+
+  <body>
+    <!--start header-->
+    <header class="top-header">
+      <nav
+        class="navbar navbar-expand align-items-center justify-content-between gap-4 container-xxl px-4"
+      >
+        <div class="logo-header d-none d-xl-flex align-items-center gap-2">
+          <div class="logo-icon">
+            <img
+              src="{{ url_for('static', filename='assets/images/logo-icon.png') }}"
+              class="logo-img"
+              width="45"
+              alt=""
+            />
+          </div>
+          <div class="logo-name">
+            <h5 class="mb-0">ACAD</h5>
+          </div>
+        </div>
+        <div
+          class="btn-toggle d-xl-none"
+          data-bs-toggle="offcanvas"
+          data-bs-target="#offcanvasNavbar"
+        >
+          <a href="javascript:;"><i class="material-icons-outlined">menu</i></a>
+        </div>
+        <div class="search-bar">
+          <div class="position-relative">
+            <input
+              class="form-control rounded-5 px-5 search-control d-lg-block d-none"
+              type="text"
+              placeholder="Search"
+            />
+            <span
+              class="material-icons-outlined position-absolute d-lg-block d-none ms-3 translate-middle-y start-0 top-50"
+              >search</span
+            >
+            <span
+              class="material-icons-outlined position-absolute me-3 translate-middle-y end-0 top-50 search-close"
+              >close</span
+            >
+            <div class="search-popup p-3">
+              <div class="card rounded-4 overflow-hidden">
+                <div class="card-header d-lg-none">
+                  <div class="position-relative">
+                    <input
+                      class="form-control rounded-5 px-5 mobile-search-control"
+                      type="text"
+                      placeholder="Search"
+                    />
+                    <span
+                      class="material-icons-outlined position-absolute ms-3 translate-middle-y start-0 top-50"
+                      >search</span
+                    >
+                    <span
+                      class="material-icons-outlined position-absolute me-3 translate-middle-y end-0 top-50 mobile-search-close"
+                      >close</span
+                    >
+                  </div>
+                </div>
+                <div class="card-body search-content">
+                  <p class="search-title">Recent Searches</p>
+                  <hr />
+                  <p class="search-title">Tutorials</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <ul class="navbar-nav gap-1 nav-right-links align-items-center">
+          <li class="nav-item d-lg-none mobile-search-btn">
+            <a class="nav-link" href="javascript:;"
+              ><i class="material-icons-outlined">search</i></a
+            >
+          </li>
+
+          <li class="nav-item d-md-flex d-none"></li>
+          <li class="nav-item dropdown">
+            <a
+              href="javascrpt:;"
+              class="dropdown-toggle dropdown-toggle-nocaret"
+              data-bs-toggle="dropdown"
+            >
+              <img
+                src="{{ url_for('static', filename='assets/images/avatars/01.png') }}"
+                class="rounded-circle p-1 border"
+                width="45"
+                height="45"
+                alt=""
+              />
+            </a>
+            <div class="dropdown-menu dropdown-user dropdown-menu-end shadow">
+              <a class="dropdown-item gap-2 py-2" href="javascript:;">
+                <div class="text-center">
+                  <img
+                    src="{{ url_for('static', filename='assets/images/avatars/01.png') }}"
+                    class="rounded-circle p-1 shadow mb-3"
+                    width="90"
+                    height="90"
+                    alt=""
+                  />
+                  <h5 class="user-name mb-0 fw-bold">User Details</h5>
+                </div>
+              </a>
+              <hr class="dropdown-divider" />
+              <a
+                class="dropdown-item d-flex align-items-center gap-2 py-2"
+                href="{{ url_for('main.supAdmProfile') }}"
+                ><i class="material-icons-outlined">person_outline</i>Profile</a
+              >
+              <a
+                class="dropdown-item d-flex align-items-center gap-2 py-2"
+                href="{{ url_for('main.supAdmDashboard') }}"
+                ><i class="material-icons-outlined">dashboard</i>Dashboard</a
+              >
+              <hr class="dropdown-divider" />
+              <a
+                class="dropdown-item d-flex align-items-center gap-2 py-2"
+                href="{{ url_for('main.supAdmLogout') }}"
+                ><i class="material-icons-outlined">power_settings_new</i
+                >Logout</a
+              >
+            </div>
+          </li>
+        </ul>
+      </nav>
+    </header>
+    <!--end top header-->
+
+    <!--navigation-->
+    <div class="primary-menu">
+      <nav
+        class="navbar navbar-expand-xl align-items-center container-xxl px-4"
+      >
+        <div
+          class="offcanvas offcanvas-start w-260"
+          tabindex="-1"
+          id="offcanvasNavbar"
+          aria-labelledby="offcanvasNavbarLabel"
+        >
+          <div class="offcanvas-header border-bottom h-70">
+            <div class="d-flex align-items-center gap-2">
+              <div class="">
+                <img
+                  src="{{ url_for('static', filename='assets/images/logo-icon.png') }}"
+                  class="logo-icon"
+                  width="45"
+                  alt="logo icon"
+                />
+              </div>
+              <div class="">
+                <h4 class="logo-text">ACAD</h4>
+              </div>
+            </div>
+            <a
+              href="javascript:;"
+              class="primaery-menu-close"
+              data-bs-dismiss="offcanvas"
+            >
+              <i class="material-icons-outlined">close</i>
+            </a>
+          </div>
+          
+          <div class="offcanvas-body p-0">
+            <ul class="navbar-nav align-items-center flex-grow-1">
+              <li class="nav-item dropdown">
+                <a
+                  class="nav-link dropdown-toggle dropdown-toggle-nocaret"
+                  href="{{ url_for('main.supAdmDashboard') }}"
+                >
+                  <div class="parent-icon">
+                    <i class="material-icons-outlined">home</i>
+                  </div>
+                  <div class="menu-title d-flex align-items-center">
+                    Dashboard
+                  </div>
+                </a>
+              </li>
+
+              <li class="nav-item dropdown">
+                <a
+                  class="nav-link dropdown-toggle dropdown-toggle-nocaret"
+                  href="javascript:;"
+                  data-bs-toggle="dropdown"
+                >
+                  <div class="parent-icon">
+                    <i class="material-icons-outlined">apps</i>
+                  </div>
+                  <div class="menu-title d-flex align-items-center">
+                    Admin Portal
+                  </div>
+                  <div class="ms-auto dropy-icon">
+                    <i class="material-icons-outlined">expand_more</i>
+                  </div>
+                </a>
+                <ul class="dropdown-menu">
+                  <li>
+                    <a class="dropdown-item" href="/superadmin/supadmcreateadmin"
+                      ><i class="material-icons-outlined">list</i
+                        >Create Admin</a
+                    >
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="/"
+                      ><i class="material-icons-outlined">plan</i>Admin Plan
+                    </a>
+                  </li>
+                </ul>
+              </li>
+
+              <li class="nav-item dropdown">
+                <a
+                  class="nav-link dropdown-toggle dropdown-toggle-nocaret"
+                  href="javascript:;"
+                  data-bs-toggle="dropdown"
+                >
+                  <div class="parent-icon">
+                    <i class="material-icons-outlined"></i>
+                  </div>
+                  <div class="menu-title d-flex align-items-center">
+                    Activities
+                  </div>
+                  <div class="ms-auto dropy-icon">
+                    <i class="material-icons-outlined">expand_more</i>
+                  </div>
+                </a>
+                <ul class="dropdown-menu">
+                  <li>
+                    <a class="dropdown-item" href="/superadmin/supadmactivities"
+                      ><i class="material-icons-outlined">supervisor_account</i
+                        >Super Admin Activities</a
+                    >
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="/superadmin/supadmcreateadmin"
+                      ><i class="material-icons-outlined">supervisor_account</i
+                        >Admin Activities</a
+                    >
+                  </li><li>
+                    <a class="dropdown-item" href="/superadmin/supadmcreateadmin"
+                      ><i class="material-icons-outlined">supervisor_account</i
+                        >Sub Admin Activities</a
+                    >
+                  </li>
+                </ul>
+              </li>
+              
+            </ul>
+          </div>
+          
+        </div>
+      </nav>
+    </div>
+    <!--end navigation-->
+
+    <!--start main wrapper-->
+    <main class="main-wrapper">{% block content %}{% endblock %}</main>
+    <!--end main wrapper-->
+
+    <!--start overlay-->
+    <div class="overlay btn-toggle"></div>
+    <!--end overlay-->
+
+    <!--start footer-->
+    <footer class="page-footer">
+      <div class="container-xxl px-4 text-center">
+        <p class="mb-0">Copyright © 2025. All right reserved.</p>
+      </div>
+    </footer>
+    <!--end footer-->
+
+    <!--start switcher-->
+    <button
+      class="btn btn-grd btn-grd-primary position-fixed bottom-0 end-0 m-3 d-flex align-items-center gap-2"
+      type="button"
+      data-bs-toggle="offcanvas"
+      data-bs-target="#staticBackdrop"
+    >
+      <i class="material-icons-outlined">tune</i>Customize
+    </button>
+
+    <div
+      class="offcanvas offcanvas-end"
+      data-bs-scroll="true"
+      tabindex="-1"
+      id="staticBackdrop"
+    >
+      <div class="offcanvas-header border-bottom h-70">
+        <div class="">
+          <h5 class="mb-0">Theme Customizer</h5>
+          <p class="mb-0">Customize your theme</p>
+        </div>
+        <a
+          href="javascript:;"
+          class="primaery-menu-close"
+          data-bs-dismiss="offcanvas"
+        >
+          <i class="material-icons-outlined">close</i>
+        </a>
+      </div>
+      <div class="offcanvas-body">
+        <div>
+          <p>Theme variation</p>
+
+          <div class="row g-3">
+            <div class="col-12 col-xl-6">
+              <input
+                type="radio"
+                class="btn-check"
+                name="theme-options"
+                id="BlueTheme"
+                checked
+              />
+              <label
+                class="btn btn-outline-secondary d-flex flex-column gap-1 align-items-center justify-content-center p-4"
+                for="BlueTheme"
+              >
+                <span class="material-icons-outlined">contactless</span>
+                <span>Blue</span>
+              </label>
+            </div>
+            <div class="col-12 col-xl-6">
+              <input
+                type="radio"
+                class="btn-check"
+                name="theme-options"
+                id="LightTheme"
+              />
+              <label
+                class="btn btn-outline-secondary d-flex flex-column gap-1 align-items-center justify-content-center p-4"
+                for="LightTheme"
+              >
+                <span class="material-icons-outlined">light_mode</span>
+                <span>Light</span>
+              </label>
+            </div>
+            <div class="col-12 col-xl-6">
+              <input
+                type="radio"
+                class="btn-check"
+                name="theme-options"
+                id="DarkTheme"
+              />
+              <label
+                class="btn btn-outline-secondary d-flex flex-column gap-1 align-items-center justify-content-center p-4"
+                for="DarkTheme"
+              >
+                <span class="material-icons-outlined">dark_mode</span>
+                <span>Dark</span>
+              </label>
+            </div>
+            <div class="col-12 col-xl-6">
+              <input
+                type="radio"
+                class="btn-check"
+                name="theme-options"
+                id="SemiDarkTheme"
+              />
+              <label
+                class="btn btn-outline-secondary d-flex flex-column gap-1 align-items-center justify-content-center p-4"
+                for="SemiDarkTheme"
+              >
+                <span class="material-icons-outlined">contrast</span>
+                <span>Semi Dark</span>
+              </label>
+            </div>
+            <div class="col-12 col-xl-6">
+              <input
+                type="radio"
+                class="btn-check"
+                name="theme-options"
+                id="BoderedTheme"
+              />
+              <label
+                class="btn btn-outline-secondary d-flex flex-column gap-1 align-items-center justify-content-center p-4"
+                for="BoderedTheme"
+              >
+                <span class="material-icons-outlined">border_style</span>
+                <span>Bordered</span>
+              </label>
+            </div>
+          </div>
+          <!--end row-->
+        </div>
+      </div>
+    </div>
+    <!--end switcher-->
+
+    <!-- Bootstrap JS -->
+    <script src="{{ url_for('static', filename='assets/js/bootstrap.bundle.min.js') }}"></script>
+
+    <!-- Plugins JS -->
+    <script src="{{ url_for('static', filename='assets/js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/metismenu/metisMenu.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/apexchart/apexcharts.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/simplebar/js/simplebar.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/peity/jquery.peity.min.js') }}"></script>
+    <script>
+      $(".data-attributes span").peity("donut");
+    </script>
+    <script src="{{ url_for('static', filename='assets/js/dashboard2.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/js/main.js') }}"></script>
+
+    <!-- Custom Theme Switcher JavaScript -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const themeRadios = document.querySelectorAll(
+          'input[name="theme-options"]'
+        );
+        const htmlElement = document.documentElement; // This is the <html> tag
+
+        // Function to apply the selected theme
+        function applyTheme(themeName) {
+          htmlElement.setAttribute("data-bs-theme", themeName);
+          // Save this preference in localStorage for persistence
+          localStorage.setItem("selectedTheme", themeName);
+        }
+
+        // Set initial theme based on localStorage or default to 'blue-theme'
+        const savedTheme =
+          localStorage.getItem("selectedTheme") || "blue-theme";
+        applyTheme(savedTheme);
+
+        // Set the correct radio button checked state on load
+        themeRadios.forEach((radio) => {
+          // Normalize the ID to match the theme names (lowercase)
+          const radioIdNormalized = radio.id.replace("Theme", "").toLowerCase();
+          if (
+            radioIdNormalized === savedTheme.replace("-theme", "").toLowerCase()
+          ) {
+            radio.checked = true;
+          } else if (radio.id === "BlueTheme" && savedTheme === "blue-theme") {
+            radio.checked = true;
+          }
+          // Special handling for Bootstrap's 'light' and 'dark'
+          if (radio.id === "LightTheme" && savedTheme === "light") {
+            radio.checked = true;
+          }
+          if (radio.id === "DarkTheme" && savedTheme === "dark") {
+            radio.checked = true;
+          }
+        });
+
+        // Add event listeners to radio buttons
+        themeRadios.forEach((radio) => {
+          radio.addEventListener("change", function () {
+            let themeValue;
+            // Map radio button IDs to actual data-bs-theme values
+            if (this.id === "BlueTheme") {
+              themeValue = "blue-theme";
+            } else if (this.id === "LightTheme") {
+              themeValue = "light"; // Bootstrap's standard light theme name
+            } else if (this.id === "DarkTheme") {
+              themeValue = "dark"; // Bootstrap's standard dark theme name
+            } else if (this.id === "SemiDarkTheme") {
+              themeValue = "semi-dark"; // Custom theme name
+            } else if (this.id === "BoderedTheme") {
+              themeValue = "bordered-theme"; // Custom theme name
+            } else {
+              themeValue = "blue-theme"; // Fallback
+            }
+            applyTheme(themeValue);
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
+"

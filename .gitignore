@@ -1,0 +1,22 @@
+# Environment variables
+# NEVER commit your .env file
+.env
+
+# Virtual Environment
+# This is huge and specific to your machine
+venv/
+.venv/
+
+# Python cache and temp files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+
+# Your temporary uploads folder
+uploads/

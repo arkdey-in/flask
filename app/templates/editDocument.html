@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Document | ARCHIVES OF CABINET AFFAIRS DEPARTMENT{% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/categories.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid-custom">
+    <h1>Edit Document Details</h1>
+    <div class="breadcrumb">
+        <a href="{{ url_for('main.admDashboard') }}">Dashboard</a> &raquo;
+        <a href="{{ url_for('main.documentList') }}">Documents</a> &raquo;
+        <span>Edit Document</span>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="alert-messages-container">
+            {% for category, message in messages %}
+            <div role="alert" class="alert-message {{ category }}">
+                <span>{{ message }}</span>
+                <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';" aria-label="Close">
+                    &times;
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="add-category-form-card">
+        <form method="POST" action="{{ url_for('main.editDocument', doc_id=doc.id) }}">
+            <div class="mb-3">
+                <label for="title" class="form-label">Title <span class="required">*</span></label>
+                <input type="text" id="title" name="title" class="form-control" value="{{ doc.title }}" required>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="category" class="form-label">Category</label>
+                    <input type="text" id="category" name="category" class="form-control" value="{{ doc.category }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="sub_category" class="form-label">Sub-Category</label>
+                    <input type="text" id="sub_category" name="sub_category" class="form-control" value="{{ doc.sub_category }}">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="tags" class="form-label">Tags</label>
+                <input type="text" id="tags" name="tags" class="form-control" value="{{ doc.tags }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea id="description" name="description" rows="4" class="form-control">{{ doc.description }}</textarea>
+            </div>
+            
+            <div class="form-footer">
+                <button type="submit" class="btn btn-grd-primary">
+                    Save Changes
+                </button>
+                <a href="{{ url_for('main.documentList') }}" class="btn btn-cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

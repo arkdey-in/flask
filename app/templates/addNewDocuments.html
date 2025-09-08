@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Add New Document | ARCHIVES OF CABINET AFFAIRS DEPARTMENT{% endblock %}
+
+
+
+{% block content %}
+<div class="container-fluid-custom">
+    <h1>Add and Process New Document</h1>
+    <div class="breadcrumb">
+        <a href="{{ url_for('main.admDashboard') }}">Dashboard</a> &raquo;
+        <a href="{{ url_for('main.addNewDocuments') }}">Add New Document</a> &raquo;
+    </div>
+    <p class="subtitle">Fill in the details, upload a file, and let the AI extract the data.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="alert-messages-container">
+            {% for category, message in messages %}
+            <div role="alert" class="alert-message {{ category }}">
+                <span>{{ message }}</span>
+                <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';" aria-label="Close">
+                    &times;
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <div id="loader-overlay" class="hidden">
+        <h3>Analyzing Document... Please wait.</h3>
+    </div>
+
+    <div class="add-category-form-card">
+        <form id="document-form" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="title" class="form-label">Title <span class="required">*</span></label>
+                <input type="text" id="title" name="title" class="form-control" placeholder="e.g., Monthly Sales Invoice" required>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="category" class="form-label">Category</label>
+                    <select id="category" name="category" class="form-control">
+                        <option value="invoices">Invoices</option>
+                        <option value="forms">Admission Forms</option>
+                        <option value="reports">Reports</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="sub_category" class="form-label">Sub-Category</label>
+                    <select id="sub_category" name="sub_category" class="form-control">
+                        <option value="utility">Utility</option>
+                        <option value="vendor">Vendor</option>
+                        <option value="student">Student</option>
+                        <option value="internal">Internal</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="file-upload" class="form-label">Document File</label>
+                <input type="file" id="file-upload" name="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="tags" class="form-label">Tags</label>
+                    <select id="tags" name="tags" class="form-control">
+                        <option value="financial">Financial</option>
+                        <option value="administrative">Administrative</option>
+                        <option value="confidential">Confidential</option>
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="ocr-engine" class="form-label">OCR Engine</label>
+                    <select id="ocr-engine" name="ocr_engine" class="form-control">
+                        <option value="azure" selected>Azure (Recommended)</option>
+                        <option value="tesseract">Tesseract</option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="button" id="analyze-button" class="btn btn-grd-primary px-4">
+                Analyze Document
+            </button>
+        </form>
+    </div>
+
+    <div id="results-container" class="hidden add-category-form-card">
+        <h2>Extracted Data</h2>
+        <form id="submission-form">
+            <div class="mb-3">
+                <label for="extracted-text" class="form-label">Editable Extracted Text</label>
+                <textarea id="extracted-text" name="extracted_data" rows="10" class="form-control" placeholder="AI-extracted data will appear here..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-grd-primary px-4">
+                Save Document
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const loader = document.getElementById('loader-overlay');
+        const analyzeButton = document.getElementById('analyze-button');
+        const documentForm = document.getElementById('document-form');
+        const submissionForm = document.getElementById('submission-form');
+        const resultsContainer = document.getElementById('results-container');
+        const extractedTextarea = document.getElementById('extracted-text');
+
+        function showLoader(message = "Processing...") {
+            const loaderText = document.querySelector('#loader-overlay h3');
+            if (loaderText) loaderText.textContent = message;
+            if (loader) loader.classList.remove('hidden');
+        }
+
+        function hideLoader() {
+            if (loader) loader.classList.add('hidden');
+        }
+
+        analyzeButton.addEventListener('click', async function(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('file-upload');
+            
+            if (!documentForm.checkValidity() || fileInput.files.length === 0) {
+                alert('Please fill out all required fields and select a file.');
+                return;
+            }
+
+            const formData = new FormData(documentForm);
+
+            showLoader("Analyzing Document... Please wait.");
+            
+            try {
+                const response = await fetch("{{ url_for('main.addNewDocuments') }}", {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'An unknown error occurred during analysis.');
+                }
+
+                const result = await response.json();
+                
+                // Display the extracted data in the textarea
+                const extractedDataString = JSON.stringify(result.extracted_data, null, 2);
+                extractedTextarea.value = extractedDataString;
+
+                // Copy form data to a hidden input for submission
+                const submissionFormData = new FormData(documentForm);
+                for (const [key, value] of submissionFormData.entries()) {
+                     // We don't want to submit the file again
+                    if (key !== 'file') {
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = key;
+                        hiddenInput.value = value;
+                        submissionForm.appendChild(hiddenInput);
+                    }
+                }
+
+                // Reveal the results and scroll to it
+                resultsContainer.classList.remove('hidden');
+                resultsContainer.scrollIntoView({ behavior: 'smooth' });
+
+                alert(result.message);
+
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            } finally {
+                hideLoader();
+            }
+        });
+
+        submissionForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const finalData = new FormData(submissionForm);
+
+            showLoader("Saving Document... Please wait.");
+
+            try {
+                const response = await fetch("{{ url_for('main.submitDocument') }}", {
+                    method: 'POST',
+                    body: finalData,
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'An unknown error occurred during submission.');
+                }
+                
+                const result = await response.json();
+                alert(result.message);
+                
+                // Redirect or clear the form after successful submission
+                documentForm.reset();
+                submissionForm.reset();
+                resultsContainer.classList.add('hidden');
+
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            } finally {
+                hideLoader();
+            }
+        });
+    });
+</script>
+{% endblock %}

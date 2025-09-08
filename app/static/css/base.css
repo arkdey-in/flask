@@ -1,0 +1,922 @@
+/* General Body and Container Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f7fa;
+    margin: 0;
+    padding: 0;
+}
+
+.container-fluid-custom {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 20px auto;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+h1 {
+    color: #333;
+    font-size: 28px;
+    margin-bottom: 25px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 15px;
+}
+
+/* Flash Messages */
+.alert-messages-container {
+    margin-bottom: 20px;
+}
+
+.alert-message {
+    padding: 12px 20px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 16px;
+    border: 1px solid transparent;
+}
+
+.alert-message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border-color: #c3e6cb;
+}
+
+.alert-message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border-color: #f5c6cb;
+}
+
+.alert-message.warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border-color: #ffeeba;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: inherit;
+    line-height: 1;
+    padding: 0;
+    margin-left: 15px;
+}
+
+/* Card Styles */
+.add-category-form-card,
+.category-list-table-card {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    padding: 25px;
+    margin-bottom: 25px;
+}
+
+/* Form Styles */
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    box-sizing: border-box; /* Ensures padding doesn't increase width */
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.mb-3 {
+    margin-bottom: 1rem; /* Equivalent to Bootstrap's mb-3 */
+}
+
+.btn {
+    display: inline-block;
+    font-weight: 400;
+    color: #212529;
+    text-align: center;
+    vertical-align: middle;
+    user-select: none;
+    background-color: transparent;
+    border: 1px solid transparent;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    border-radius: 0.25rem;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+        border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    cursor: pointer;
+}
+
+.btn-primary {
+    color: #fff;
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    color: #fff;
+    background-color: #0056b3;
+    border-color: #004085;
+}
+
+/* Table Styles */
+.category-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.category-list-table th,
+.category-list-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.category-list-table th {
+    background-color: #f8f9fa;
+    color: #333;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 14px;
+}
+
+.category-list-table tbody tr:hover {
+    background-color: #f1f1f1;
+}
+
+.category-list-table td:last-child {
+    white-space: nowrap; /* Prevents action buttons from wrapping */
+}
+
+/* Action Buttons in Table */
+.btn-action {
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-action .material-icons-outlined {
+    font-size: 18px; /* Adjust icon size */
+}
+
+.btn-edit {
+    background-color: #007bff;
+    color: white;
+    border: 1px solid #007bff;
+    margin-right: 5px; /* Space between edit and delete */
+}
+
+.btn-edit:hover {
+    background-color: #0056b3;
+    border-color: #004085;
+    transform: translateY(-1px);
+}
+
+.btn-delete {
+    background-color: #dc3545;
+    color: white;
+    border: 1px solid #dc3545;
+}
+
+.btn-delete:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+    transform: translateY(-1px);
+}
+
+.d-inline-block {
+    display: inline-block;
+}
+
+/* No categories found message */
+.text-center {
+    text-align: center;
+}
+
+.py-4 {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+}
+
+
+/* Modal Styles (Edit Modal) */
+.modal-custom {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    padding: 20px; /* Add some padding around the modal */
+    box-sizing: border-box; /* Include padding in element's total width and height */
+}
+
+.modal-content-custom {
+    background-color: #fefefe;
+    margin: auto; /* For older browsers, flexbox handles centering */
+    padding: 30px;
+    border: 1px solid #888;
+    width: 90%; /* Adjust as needed */
+    max-width: 500px; /* Max width for larger screens */
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+    animation-name: animatetop;
+    animation-duration: 0.4s
+}
+
+/* Add Animation */
+@keyframes animatetop {
+    from {top: -300px; opacity: 0}
+    to {top: 0; opacity: 1}
+}
+
+.modal-close-button {
+    color: #aaa;
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 30px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.modal-close-button:hover,
+.modal-close-button:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.modal-content-custom h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 24px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.btn-submit {
+    background-color: #28a745; /* Green for update */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s ease;
+    width: 100%; /* Make button full width in modal */
+    margin-top: 15px;
+}
+
+.btn-submit:hover {
+    background-color: #218838;
+}
+
+/* Responsive Table */
+@media screen and (max-width: 768px) {
+    .category-list-table,
+    .category-list-table tbody,
+    .category-list-table tr,
+    .category-list-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .category-list-table thead {
+        display: none; /* Hide table headers (but not important for accessibility) */
+    }
+
+    .category-list-table tr {
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    .category-list-table td {
+        text-align: right;
+        padding-left: 50%; /* Space for the data-label */
+        position: relative;
+    }
+
+    .category-list-table td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 10px;
+        width: calc(50% - 20px);
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+        font-weight: bold;
+        color: #555;
+    }
+
+    .category-list-table td:last-child {
+        text-align: center;
+        display: flex;
+        justify-content: center;
+        padding: 15px;
+        gap: 10px; /* Space between action buttons */
+    }
+}
+
+/* Footer Styling (based on image's simple footer) */
+footer {
+    text-align: center;
+    padding: 20px;
+    color: #888;
+    font-size: 14px;
+    margin-top: 30px;
+    border-top: 1px solid #eee;
+}
+
+/* Table Styles - Improved */
+.category-list-table {
+    width: 100%;
+    border-collapse: separate; /* Allows spacing between rows */
+    border-spacing: 0 8px; /* Adds space between rows */
+    margin-top: 20px;
+}
+
+.category-list-table th,
+.category-list-table td {
+    padding: 14px 18px;
+    text-align: left;
+    background-color: #fff;
+}
+
+.category-list-table th {
+    background-color: #f1f3f6;
+    color: #333;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.category-list-table tbody tr {
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    transition: all 0.2s ease-in-out;
+}
+
+.category-list-table tbody tr:hover {
+    background-color: #f9fbfd;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+}
+
+.category-list-table td {
+    border-top: 1px solid #f0f0f0;
+}
+
+.category-list-table td:first-child {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+.category-list-table td:last-child {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    white-space: nowrap;
+}
+
+/* Zebra striping for readability */
+.category-list-table tbody tr:nth-child(even) td {
+    background-color: #fafafa;
+}
+/* Add these to your existing categories.css file */
+
+/* Subtitle style */
+.subtitle {
+    color: #666;
+    font-size: 16px;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+/* Required field indicator */
+.required {
+    color: #dc3545;
+}
+
+/* Loader overlay styles */
+#loader-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    color: white;
+}
+
+#loader-overlay h3 {
+    margin-top: 20px;
+    font-size: 18px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Row and column layout */
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-left: -15px;
+    margin-right: -15px;
+}
+
+.col-md-6 {
+    flex: 0 0 50%;
+    max-width: 50%;
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* Textarea specific styling */
+textarea.form-control {
+    min-height: 150px;
+    resize: vertical;
+}
+
+/* Button gradient style */
+.btn-grd-primary {
+    background: linear-gradient(to right, #007bff, #00bfff);
+    color: white;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-grd-primary:hover {
+    background: linear-gradient(to right, #0069d9, #0095d9);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Add these styles to your existing categories.css */
+
+/* View button style */
+.btn-view {
+    background-color: #17a2b8;
+    color: white;
+    border: 1px solid #17a2b8;
+}
+
+.btn-view:hover {
+    background-color: #138496;
+    border-color: #117a8b;
+}
+
+/* Input group styling */
+.input-group {
+    display: flex;
+    width: 100%;
+}
+
+.input-group .form-control {
+    flex: 1;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.input-group .btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    white-space: nowrap;
+}
+
+/* Responsive adjustments for filter form */
+@media screen and (max-width: 768px) {
+    .row {
+        flex-direction: column;
+    }
+    
+    .col-md-4 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    
+    .input-group {
+        flex-direction: column;
+    }
+    
+    .input-group .form-control {
+        border-radius: 4px;
+        margin-bottom: 10px;
+    }
+    
+    .input-group .btn {
+        border-radius: 4px;
+        width: 100%;
+    }
+}
+
+/* Table action cell styling */
+.category-list-table td[data-label="Actions"] {
+    white-space: nowrap;
+}
+
+.category-list-table td[data-label="Actions"] .btn-action {
+    margin-right: 5px;
+}
+
+.category-list-table td[data-label="Actions"] form {
+    display: inline-block;
+    margin: 0;
+}
+
+/* Add these styles to your existing categories.css */
+
+/* Breadcrumb styling */
+.breadcrumb {
+    padding: 8px 15px;
+    margin-bottom: 20px;
+    list-style: none;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.breadcrumb a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb span {
+    color: #6c757d;
+}
+
+.breadcrumb > a + a:before,
+.breadcrumb > a + span:before {
+    padding: 0 5px;
+    color: #6c757d;
+    content: "/\00a0";
+}
+
+/* Table header with title and button */
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 0 10px;
+}
+
+.table-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+/* Responsive adjustments for action buttons */
+@media screen and (max-width: 768px) {
+    .category-list-table td[data-label="Actions"] {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .category-list-table td[data-label="Actions"] .btn-action {
+        width: 100%;
+        text-align: center;
+        margin-right: 0;
+    }
+    
+    .breadcrumb {
+        padding: 8px;
+        font-size: 12px;
+    }
+}
+
+/* Material Icons */
+.material-icons-outlined {
+    font-family: 'Material Icons Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 18px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    vertical-align: middle;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Add these styles to your existing categories.css */
+
+/* Role badge styling */
+.role-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.role-active {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.role-inactive {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+/* Responsive table adjustments for user list */
+@media screen and (max-width: 992px) {
+    .category-list-table td[data-label="Email"],
+    .category-list-table td[data-label="Username"] {
+        word-break: break-all;
+    }
+    
+    .category-list-table td[data-label="Actions"] {
+        white-space: normal;
+    }
+    
+    .category-list-table td[data-label="Actions"] .btn-action {
+        margin-bottom: 5px;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .category-list-table td[data-label="Role"] .role-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+    
+    .category-list-table td[data-label="Actions"] {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .category-list-table td[data-label="Actions"] .btn-action {
+        width: 100%;
+        text-align: center;
+        margin-right: 0;
+    }
+}
+
+/* Add these styles to your existing categories.css */
+
+/* Form header styling */
+.form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.form-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+/* Permission table styling */
+.permissions-table {
+    margin: 25px 0;
+}
+
+.permission-switches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.permission-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.permission-label {
+    font-size: 14px;
+    min-width: 60px;
+}
+
+.permission-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 30px;
+}
+
+.permission-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.permission-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.permission-slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .permission-slider {
+    background-color: #4CAF50;
+}
+
+input:checked + .permission-slider:before {
+    transform: translateX(30px);
+}
+
+/* Form footer styling */
+.form-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.btn-cancel {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-cancel:hover {
+    background-color: #5a6268;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+    .form-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .permission-switches {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .category-list-table td[data-label="Permissions"] {
+        padding: 10px;
+    }
+    
+    .form-footer {
+        flex-direction: column;
+    }
+    
+    .btn-cancel, .btn-grd-primary {
+        width: 100%;
+    }
+}
+
+/* Form text helper styling */
+.form-text {
+    display: block;
+    margin-top: 5px;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+/* Password fields specific styling */
+input[type="password"] {
+    letter-spacing: 1px;
+}
+
+/* Responsive adjustments for user form */
+@media screen and (max-width: 768px) {
+    .add-category-form-card .row {
+        flex-direction: column;
+    }
+    
+    .add-category-form-card .col-md-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    
+    .form-footer {
+        flex-direction: column;
+    }
+    
+    .form-footer .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .form-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .form-header .btn {
+        margin-top: 10px;
+    }
+}
+
+/* Textarea specific styling */
+textarea.form-control {
+    min-height: 120px;
+    resize: vertical;
+}
+
+/* Form footer styling */
+.form-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+    .form-footer {
+        flex-direction: column;
+    }
+    
+    .btn-cancel, .btn-grd-primary {
+        width: 100%;
+    }
+    
+    .row {
+        flex-direction: column;
+    }
+    
+    .col-md-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}

@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{%block title %}Categories | ARCHIVES OF CABINET AFFAIRS DEPARTMENT{% endblock%} 
+
+{%block content%}
+  <div class="container-fluid-custom"> {# Main container for overall page content #}
+    <h1>CATEGORIES</h1>
+    <div class="breadcrumb">
+        <a href="{{ url_for('main.admDashboard') }}">Dashboard</a> &raquo;
+        <a href="{{ url_for('main.categories') }}">Categories</a> &raquo;
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="alert-messages-container"> {# Container for flash messages #}
+                {% for category , message  in messages %}
+                    <div role="alert" class="alert-message {{ category }}"> {# Apply custom alert-message class and Flask category #}
+                        <span>{{ message }}</span>
+                        <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';" aria-label="Close">&times;</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="add-category-form-card"> {# Card-like container for the Add Category form #}
+      <form action="/master/categories/add" method="POST">
+        <div class="mb-3"> {# Bootstrap margin-bottom class #}
+          <label for="categoryName" class="form-label">Category Name</label> {# Bootstrap form-label class #}
+          <input
+            type="text"
+            name="categoryName"
+            id="categoryName"
+            class="form-control" {# Bootstrap form-control class #}
+            placeholder="e.g., Finance, Legal, Health, Project, Records"
+            required
+          />
+        </div>
+        <button type="submit" class="btn btn-grd-primary px-4">Add Category</button> {# Bootstrap button classes #}
+      </form>
+    </div>
+
+    <div class="category-list-table-card"> {# Card-like container for the table #}
+      <table class="category-list-table"> {# Custom table class #}
+        <thead>
+          <tr>
+            <th>#Id</th>
+            <th>Category Name</th>
+            <th>Created On</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for cate in categories %}
+          <tr>
+            <td data-label="#Id">{{cate.c_id}}</td> {# Added data-label for responsive table #}
+            <td data-label="Category Name">{{cate.category_name}}</td> {# Added data-label #}
+            <td data-label="Created On">{{cate.c_created_at}}</td> {# Added data-label #}
+            <td>
+              <!-- Edit Button -->
+              <span>
+                <button
+                  class="btn-action btn-edit" {# Custom and Bootstrap-like classes #}
+                  onclick="openEditModal({{ cate.c_id }}, '{{ cate.category_name }}')"
+                >
+                  <i class="material-icons-outlined">edit</i>Edit
+                </button>
+              </span>
+
+              <!-- Delete Form -->
+              <span>
+                <form action="categories/delete/{{cate.c_id}}" method="POST" class="d-inline-block"> {# d-inline-block to keep button on same line #}
+                  <button
+                    type="submit"
+                    class="btn-action btn-delete" {# Custom and Bootstrap-like classes #}
+                    onclick="return confirm('Are you sure you want to delete category ID {{ cate.c_id }} ({{ cate.category_name }})?');"
+                  >
+                    <i class="material-icons-outlined">delete</i>Delete
+                  </button>
+                </form>
+              </span>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" class="text-center py-4">No categories found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Edit Modal (Reverted to original JS behavior) -->
+    <div id="editModal" class="modal-custom"> {# Using custom class for modal #}
+      <div class="modal-content-custom"> {# Using custom class for modal content #}
+        <span class="modal-close-button" onclick="closeEditModal()">&times;</span> {# Using custom class for close button #}
+        <h3>Edit Category</h3>
+        <form id="editForm" method="POST">
+          <input type="hidden" name="id" id="editCategoryId" />
+          <div class="mb-3">
+            <label for="editCategoryName" class="form-label">Category Name</label>
+            <input
+              type="text"
+              name="categoryName"
+              id="editCategoryName"
+              class="form-control"
+              required
+            />
+          </div>
+          <button type="submit" class="btn-submit">Update</button> {# Using custom class for submit button #}
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // Get the modal element
+      let modal = document.getElementById("editModal");
+
+      // Function to open the Edit Modal
+      function openEditModal(id, name) {
+        document.getElementById("editCategoryId").value = id;
+        document.getElementById("editCategoryName").value = name;
+        document.getElementById("editForm").action =
+          "/master/categories/edit/" + id;
+        modal.style.display = "flex"; // Changed to 'flex' for centering with CSS
+      }
+
+      // Function to close the Edit Modal
+      function closeEditModal() {
+        modal.style.display = "none";
+        // Optional: Reset form fields when modal is closed
+        document.getElementById("editForm").reset();
+      }
+
+      // Close the modal if the user clicks outside of it
+      window.onclick = function (event) {
+        if (event.target === modal) {
+          closeEditModal();
+        }
+      };
+
+      // Ensure modal is hidden on page load (important for initial state)
+      window.onload = function () {
+        closeEditModal();
+      };
+
+      // IMPORTANT: For the `confirm` dialog on delete, it's generally better UX
+      // to use a custom modal instead of `window.confirm()`.
+      // I've left `window.confirm()` in for now to match your existing logic,
+      // but consider replacing it with a custom confirmation modal for a more professional feel.
+    </script>
+{% endblock %}

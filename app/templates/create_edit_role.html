@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}{% if role %}Edit Role{% else %}Create Role{% endif %} | ARCHIVES OF CABINET AFFAIRS DEPARTMENT{% endblock %}
+
+{% block content %}
+<div class="container-fluid-custom addNewRole">
+    <h1>{% if role %}Edit Role{% else %}Create Role{% endif %}</h1>
+    
+    <div class="breadcrumb">
+        <a href="{{ url_for('main.admDashboard') }}">Dashboard</a> &raquo;
+        <a href="{{ url_for('main.usersRoles') }}">Users</a> &raquo;
+        <span>{% if role %}Edit Role{% else %}Create Role{% endif %}</span>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="alert-messages-container">
+            {% for category, message in messages %}
+            <div role="alert" class="alert-message {{ category }}">
+                <span>{{ message }}</span>
+                <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';" aria-label="Close">
+                    &times;
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="add-category-form-card">
+        <div class="form-header">
+            <h3>{% if role %}Edit Role Details{% else %}New Role Details{% endif %}</h3>
+            <a href="{{ url_for('main.usersRoles') }}" class="btn btn-grd-primary">
+                <i class="material-icons-outlined">list</i> All Roles
+            </a>
+        </div>
+
+        <form action="{{ url_for('main.editRole', role_id=role.r_id) if role else url_for('main.createRole') }}" method="post">
+            <div class="mb-3">
+                <label for="roleName" class="form-label">Name <span class="required">*</span></label>
+                <input type="text" class="form-control" id="roleName" name="role_name" 
+                       placeholder="Enter Role Name" value="{{ role.role_name if role }}" required>
+            </div>
+
+            <div class="permissions-table">
+                <table class="category-list-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">(Menu Item) (Module Name)</th>
+                            <th>Permission Types</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>CATEGORIES</td>
+                            <td class="text-center">
+                                <div class="permission-switches">
+                                    <div class="permission-item">
+                                        <label class="permission-label">View Categories</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="view_categories" value="Yes" class="toggle-switch" {% if role and role.permissions.CATEGORIES.view_categories == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Create Category</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="create_category" value="Yes" class="toggle-switch" {% if role and role.permissions.CATEGORIES.create_category == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Edit Category</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="edit_category" value="Yes" class="toggle-switch" {% if role and role.permissions.CATEGORIES.edit_category == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Delete Category</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="delete_category" value="Yes" class="toggle-switch" {% if role and role.permissions.CATEGORIES.delete_category == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>SUB CATEGORIES</td>
+                            <td class="text-center">
+                                <div class="permission-switches">
+                                    <div class="permission-item">
+                                        <label class="permission-label">View Sub Categories</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="view_sub_categories" value="Yes" class="toggle-switch" {% if role and role.permissions.SUB_CATEGORIES.view_sub_categories == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Create Sub Category</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="create_sub_category" value="Yes" class="toggle-switch" {% if role and role.permissions.SUB_CATEGORIES.create_sub_category == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Edit Sub Category</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="edit_sub_category" value="Yes" class="toggle-switch" {% if role and role.permissions.SUB_CATEGORIES.edit_sub_category == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Delete Sub Category</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="delete_sub_category" value="Yes" class="toggle-switch" {% if role and role.permissions.SUB_CATEGORIES.delete_sub_category == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>TAGS</td>
+                            <td class="text-center">
+                                <div class="permission-switches">
+                                    <div class="permission-item">
+                                        <label class="permission-label">View Tags</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="view_tags" value="Yes" class="toggle-switch" {% if role and role.permissions.TAGS.view_tags == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Create Tag</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="create_tag" value="Yes" class="toggle-switch" {% if role and role.permissions.TAGS.create_tag == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Edit Tag</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="edit_tag" value="Yes" class="toggle-switch" {% if role and role.permissions.TAGS.edit_tag == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Delete Tag</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="delete_tag" value="Yes" class="toggle-switch" {% if role and role.permissions.TAGS.delete_tag == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>DOCUMENTS</td>
+                            <td class="text-center">
+                                <div class="permission-switches">
+                                    <div class="permission-item">
+                                        <label class="permission-label">View Documents</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="view_documents" value="Yes" class="toggle-switch" {% if role and role.permissions.DOCUMENTS.view_documents == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Create Document</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="create_document" value="Yes" class="toggle-switch" {% if role and role.permissions.DOCUMENTS.create_document == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Edit Document</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="edit_document" value="Yes" class="toggle-switch" {% if role and role.permissions.DOCUMENTS.edit_document == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Delete Document</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="delete_document" value="Yes" class="toggle-switch" {% if role and role.permissions.DOCUMENTS.delete_document == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>ROLES</td>
+                            <td class="text-center">
+                                <div class="permission-switches">
+                                    <div class="permission-item">
+                                        <label class="permission-label">View Roles</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="view_roles" value="Yes" class="toggle-switch" {% if role and role.permissions.ROLES.view_roles == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Create Role</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="create_role" value="Yes" class="toggle-switch" {% if role and role.permissions.ROLES.create_role == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Edit Role</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="edit_role" value="Yes" class="toggle-switch" {% if role and role.permissions.ROLES.edit_role == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Delete Role</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="delete_role" value="Yes" class="toggle-switch" {% if role and role.permissions.ROLES.delete_role == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Users</td>
+                            <td class="text-center">
+                                <div class="permission-switches">
+                                    <div class="permission-item">
+                                        <label class="permission-label">View Users</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="view_users" value="Yes" class="toggle-switch" {% if role and role.permissions.USERS.view_users == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Create User</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="create_users" value="Yes" class="toggle-switch" {% if role and role.permissions.USERS.create_users == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Edit User</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="edit_users" value="Yes" class="toggle-switch" {% if role and role.permissions.USERS.edit_users == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <label class="permission-label">Delete User</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="delete_users" value="Yes" class="toggle-switch" {% if role and role.permissions.USERS.delete_users == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>USER ACTIVITIES</td>
+                            <td class="text-center">
+                                <div class="permission-switches">
+                                    <div class="permission-item">
+                                        <label class="permission-label">View User Activities</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="view_user_activities" value="Yes" class="toggle-switch" {% if role and role.permissions.USER_ACTIVITIES.view_user_activities == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>DASHBOARDS</td>
+                            <td class="text-center">
+                                <div class="permission-switches">
+                                    <div class="permission-item">
+                                        <label class="permission-label">View Dashboard</label>
+                                        <label class="permission-switch">
+                                            <input type="checkbox" name="view_dashboard" value="Yes" class="toggle-switch" {% if role and role.permissions.DASHBOARDS.view_dashboard == 'Yes' %}checked{% endif %}>
+                                            <span class="permission-slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="form-footer">
+                <button type="submit" class="btn btn-grd-primary">
+                    {% if role %}Update Role{% else %}Create Role{% endif %}
+                </button>
+                <a href="{{ url_for('main.usersRoles') }}" class="btn btn-cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

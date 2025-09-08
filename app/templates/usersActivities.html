@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid-custom">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="table-header">
+                        <h3>User Activities</h3>
+                        </div>
+                </div>
+                <div class="card-body table-responsive p-0">
+                    <table class="category-list-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>User</th>
+                                <th>IP Address</th>
+                                <th>Time</th>
+                                <th>Event</th>
+                                <th>Model</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in activities %}
+                            <tr>
+                                <td data-label="#">{{ loop.index + (pagination.page - 1) * pagination.per_page }}</td>
+                                <td data-label="User">{{ activity.username or 'System' }}</td>
+                                <td data-label="IP">{{ activity.userip or 'N/A' }}</td>
+                                <td data-label="Time">{{ activity.event_time.strftime('%d-%m-%Y %H:%M:%S') }}</td>
+                                <td data-label="Event">
+                                    <span class="badge 
+                                        {% if activity.event_type == 'Create' %}bg-success
+                                        {% elif activity.event_type == 'Update' %}bg-warning
+                                        {% elif activity.event_type == 'Delete' %}bg-danger
+                                        {% elif activity.event_type == 'Login' %}bg-primary
+                                        {% elif activity.event_type == 'Logout' %}bg-secondary
+                                        {% else %}bg-info{% endif %}">
+                                        {{ activity.event_type }}
+                                    </span>
+                                </td>
+                                <td data-label="Model">{{ activity.model }}</td>
+                                <td data-label="Details">{{ activity.value }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">No activities found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer clearfix">
+                    <ul class="pagination pagination-sm m-0 float-right">
+                        {% if pagination.has_prev %}
+                        <li class="page-item"><a class="page-link" href="{{ url_for('main.usersActivities', page=pagination.prev_num) }}">&laquo;</a></li>
+                        {% endif %}
+                        
+                        {% for page_num in pagination.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num == pagination.page %}
+                                <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                                {% else %}
+                                <li class="page-item"><a class="page-link" href="{{ url_for('main.usersActivities', page=page_num) }}">{{ page_num }}</a></li>
+                                {% endif %}
+                            {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if pagination.has_next %}
+                        <li class="page-item"><a class="page-link" href="{{ url_for('main.usersActivities', page=pagination.next_num) }}">&raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

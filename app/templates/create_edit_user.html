@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}{% if user %}Edit User{% else %}Create User{% endif %} | ARCHIVES OF CABINET AFFAIRS DEPARTMENT{% endblock %}
+
+{% block content %}
+<div class="container-fluid-custom">
+  <h1>{% if user %}Edit User{% else %}Create User{% endif %}</h1>
+
+  <div class="breadcrumb">
+    <a href="{{ url_for('main.admDashboard') }}">Dashboard</a> &raquo;
+    <a href="{{ url_for('main.userList') }}">Users</a> &raquo;
+    <span>{% if user %}Edit User{% else %}Create User{% endif %}</span>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="alert-messages-container">
+    {% for category, message in messages %}
+    <div role="alert" class="alert-message {{ category }}">
+      <span>{{ message }}</span>
+      <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';" aria-label="Close">
+        &times;
+      </button>
+    </div> 
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <div class="add-category-form-card">
+    <div class="form-header">
+      <h3>{% if user %}Edit User Details{% else %}New User Details{% endif %}</h3>
+      <a href="{{ url_for('main.userList') }}" class="btn btn-grd-primary">
+        <i class="material-icons-outlined">list</i> All Users
+      </a>
+    </div>
+
+    <form action="{{ url_for('main.editUser', user_id=user.subadmin_id) if user else url_for('main.createUser') }}" method="post">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="name" class="form-label">Name <span class="required">*</span></label>
+          <input type="text" class="form-control" id="name" name="name" placeholder="Enter Full Name"
+                 value="{{ user.subadmin_name if user }}" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="email" class="form-label">Email <span class="required">*</span></label>
+          <input type="email" class="form-control" id="email" name="email" placeholder="Enter Email Address"
+                 value="{{ user.subadmin_email if user }}" required>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="username" class="form-label">Username <span class="required">*</span></label>
+          <input type="text" class="form-control" id="username" name="username" placeholder="Enter Username"
+                 value="{{ user.subadmin_username if user }}" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="role_id" class="form-label">Select Role <span class="required">*</span></label>
+          <select class="form-control" id="role_id" name="role_id" required>
+            <option value>-- Select a Role --</option>
+            {% for role in all_roles %}
+            <option value="{{ role.r_id }}" {% if user and user.role_id == role.r_id %}selected{% endif %}>
+              {{ role.role_name }}
+            </option>
+            {% endfor %}
+          </select>
+          <input type="hidden" name="role_name" id="role_name_input"
+                 value="{% if user and user.role_name %}{{ user.role_name }}{% endif %}">
+        </div>
+
+        <script>
+          document.addEventListener('DOMContentLoaded', function () {
+            const roleSelect = document.getElementById('role_id');
+            const roleNameInput = document.getElementById('role_name_input');
+
+            if (roleSelect.value && !roleNameInput.value) {
+              roleNameInput.value = roleSelect.options[roleSelect.selectedIndex].text;
+            }
+
+            roleSelect.addEventListener('change', function () {
+              roleNameInput.value = this.options[this.selectedIndex].text;
+            });
+          });
+        </script>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="password" class="form-label">Password {% if not user %}<span class="required">*</span>{% endif %}</label>
+          <input type="password" class="form-control" id="password" name="password" placeholder="Enter Password"
+                 {% if not user %}required{% endif %}>
+          {% if user %}
+          <small class="form-text">Leave blank to keep the current password.</small>
+          {% endif %}
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="confirm_password" class="form-label">Confirm Password {% if not user %}<span class="required">*</span>{% endif %}</label>
+          <input type="password" class="form-control" id="confirm_password" name="confirm_password"
+                 placeholder="Confirm Password" {% if not user %}required{% endif %}>
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <button type="submit" class="btn btn-grd-primary">
+          {% if user %}Update User{% else %}Create User{% endif %}
+        </button>
+        <a href="{{ url_for('main.userList') }}" class="btn btn-cancel">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,187 @@
+{% extends "base.html" %} {% block title %}Sub Categories | ARCHIVES OF CABINET
+AFFAIRS DEPARTMENT{% endblock %} {% block content %}
+<div class="container-fluid-custom">
+  <h1>SUB CATEGORIES</h1>
+  <div class="breadcrumb">
+    <a href="{{ url_for('main.admDashboard') }}">Dashboard</a> &raquo;
+    <a href="{{ url_for('main.subCategories') }}">Sub Categories</a> &raquo;
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %} {% if
+  messages %}
+  <div class="alert-messages-container">
+    {% for category , message in messages %}
+    <div role="alert" class="alert-message {{ category }}">
+      <span>{{ message }}</span>
+      <button
+        type="button"
+        class="close-btn"
+        onclick="this.parentElement.style.display='none';"
+        aria-label="Close"
+      >
+        &times;
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %} {% endwith %}
+
+  <div class="add-category-form-card">
+    <form action="/master/sub-categories/add" method="POST">
+
+      <div class="mb-3">
+        <label for="category_id" class="form-label"
+          >Select Parent Category</label
+        >
+        <select
+          name="category_id"
+          id="category_id"
+          class="form-control"
+          required
+          onchange="updateCategoryName()"
+        >
+          {% for cate in all_categories %}
+          <option value="{{ cate.c_id }}" data-name="{{ cate.category_name }}">
+            {{ cate.category_name }}
+          </option>
+          {% endfor %}
+        </select>
+        <input type="hidden" name="category_name" id="category_name_input" />
+      </div>
+
+      <script>
+        function updateCategoryName() {
+          const select = document.getElementById("category_id");
+          const selectedOption = select.options[select.selectedIndex];
+          document.getElementById("category_name_input").value =
+            selectedOption.dataset.name;
+        }
+      </script>
+
+      <div class="mb-3">
+        <label for="sub_category_name" class="form-label"
+          >Sub Category Name</label
+        >
+        <input
+          type="text"
+          name="sub_category_name"
+          id="sub_category_name"
+          class="form-control"
+          placeholder="e.g., Invoices, Contracts, Reports, Notes"
+          required
+        />
+      </div>
+      <button type="submit" class="btn btn-grd-primary px-4">
+        Add Sub Category
+      </button>
+    </form>
+  </div>
+
+  <div class="category-list-table-card">
+    <table class="category-list-table">
+      <thead>
+        <tr>
+          <th>#Id</th>
+          <th>Category Name</th>
+          <th>Sub Category Name</th>
+          <th>Created On</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for subc in all_subcategories %}
+        <tr>
+          <td data-label="#Id">{{ subc.sc_id }}</td>
+          <td data-label="Category Name">{{ subc.category_name }}</td>
+          <td data-label="Sub Category Name">{{ subc.sub_category_name }}</td>
+          <td data-label="Created On">{{ subc.sc_created_at }}</td>
+          <td>
+            <!-- Edit Button -->
+            <span>
+              <button
+                class="btn-action btn-edit"
+                onclick="openEditModal({{ subc.sc_id }}, '{{ subc.sub_category_name }}')"
+              >
+                <i class="material-icons-outlined">edit</i>Edit
+              </button>
+            </span>
+
+            <!-- Delete Form -->
+            <span>
+              <form
+                action="sub-categories/delete/{{ subc.sc_id }}"
+                method="POST"
+                class="d-inline-block"
+              >
+                <button
+                  type="submit"
+                  class="btn-action btn-delete"
+                  onclick="return confirm('Are you sure you want to delete sub-category ID {{ subc.sc_id }} ({{ subc.sub_category_name }})?');"
+                >
+                  <i class="material-icons-outlined">delete</i>Delete
+                </button>
+              </form>
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center py-4">No sub-categories found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="modal-custom">
+    <div class="modal-content-custom">
+      <span class="modal-close-button" onclick="closeEditModal()">&times;</span>
+      <h3>Edit Sub Category</h3>
+      <form id="editForm" method="POST">
+        <input type="hidden" name="id" id="editCategoryId" />
+        <div class="mb-3">
+          <label for="editCategoryName" class="form-label"
+            >Sub Category Name</label
+          >
+          <input
+            type="text"
+            name="subCategoryName"
+            id="editCategoryName"
+            class="form-control"
+            required
+          />
+        </div>
+        <button type="submit" class="btn-submit">Update</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let modal = document.getElementById("editModal");
+
+    function openEditModal(id, name) {
+      document.getElementById("editCategoryId").value = id;
+      document.getElementById("editCategoryName").value = name;
+      document.getElementById("editForm").action =
+        "/master/sub-categories/edit/" + id;
+      modal.style.display = "flex";
+    }
+
+    function closeEditModal() {
+      modal.style.display = "none";
+      document.getElementById("editForm").reset();
+    }
+
+    window.onclick = function (event) {
+      if (event.target === modal) {
+        closeEditModal();
+      }
+    };
+
+    window.onload = function () {
+      closeEditModal();
+    };
+  </script>
+</div>
+{% endblock %}

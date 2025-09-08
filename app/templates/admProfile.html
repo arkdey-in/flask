@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Admin Profile | ARCHIVES OF CABINET AFFAIRS DEPARTMENT{% endblock %}
+{% block style %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}"/>
+{% endblock %}
+{% block content %}
+<div class="container-fluid-custom"> 
+
+    <div class="section-container"> 
+        <h1 class="page-title">Admin Profile Page</h1>
+    </div>
+
+    <div class="profile-card"> 
+        {% if admin %}
+        <p class="section-heading">User Information</p>
+        <ul class="user-info-list">
+          <li><strong>Hello:</strong> {{ admin['admin_name'] }}</li> {# Or admin.admin_name #}
+          <li><strong>Your Admin ID : </strong> {{ admin['admin_id'] }}</li> 
+          <li><strong>Your Admin Email : </strong> {{ admin['admin_email'] }}</li> 
+        </ul>
+        {% else %}
+        <p class="text-center py-4 no-data-message">No user data available.</p>
+        {% endif %}
+    </div>
+
+    <div class="logout-container"> {# Container specifically for the logout button #}
+      <a href="{{ url_for('main.admLogout') }}" class="btn btn-logout"> Logout </a>
+    </div>
+ 
+</div>
+{% endblock %}
