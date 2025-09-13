@@ -78,25 +78,50 @@ def get_s3_client():
         region_name=current_app.config.get("AWS_REGION"),
     )
 
-def upload_file_to_s3(file, bucket_name, acl="public-read"):
+# def upload_file_to_s3(file, bucket_name, acl="public-read"):
+#     """Uploads a file object to S3."""
+#     s3_client = get_s3_client()
+#     try:
+#         s3_client.upload_fileobj(
+#             file,  # This is the file object
+#             bucket_name,
+#             file.filename,
+#             ExtraArgs={
+#                 "ACL": acl,
+#                 "ContentType": file.content_type
+#             }
+#         )
+#         # Generate the URL
+#         aws_region = current_app.config.get("AWS_REGION")
+#         url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{file.filename}"
+#         return url
+#     except ClientError as e:
+#         print(f"Error uploading to S3: {e}")
+#         return None
+
+
+def upload_file_to_s3(file_obj, bucket_name, object_name, acl="public-read"): # CHANGED: Added object_name
     """Uploads a file object to S3."""
     s3_client = get_s3_client()
     try:
+        # Get the content type from the file object if it exists
+        content_type = getattr(file_obj, 'content_type', 'application/octet-stream')
+        
         s3_client.upload_fileobj(
-            file,  # This is the file object
+            file_obj,       # This is the file object
             bucket_name,
-            file.filename,
+            object_name,    # CHANGED: Use the provided object_name
             ExtraArgs={
                 "ACL": acl,
-                "ContentType": file.content_type
+                "ContentType": content_type
             }
         )
         # Generate the URL
         aws_region = current_app.config.get("AWS_REGION")
-        url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{file.filename}"
+        url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{object_name}" # CHANGED: Use object_name
         return url
     except ClientError as e:
-        print(f"Error uploading to S3: {e}")
+        current_app.logger.error(f"Error uploading to S3: {e}")
         return None
 
 def delete_file_from_s3(key, bucket_name):
@@ -1733,6 +1758,85 @@ def addNewDocuments():
     return render_template("addNewDocuments.html")
 
 
+# @main.route("/documents/submit", methods=["POST"])
+# @adm_login_required
+# def submitDocument():
+#     """
+#     Handles the final submission after the user has reviewed and edited the extracted data.
+#     """
+#     filepath = session.get("processing_filepath")
+#     form_data = session.get("form_data_for_submission")
+#     original_filename = session.get("processing_filename")
+
+#     if not filepath or not form_data:
+#         return jsonify({"error": "Analysis data not found. Please re-analyze the document."}), 400
+
+#     edited_data_json_str = request.form.get("extracted_data")
+#     if not edited_data_json_str:
+#         return jsonify({"error": "No extracted data provided for submission."}), 400
+
+#     try:
+#         json.loads(edited_data_json_str)
+#     except json.JSONDecodeError:
+#         return jsonify({"error": "Invalid JSON format in the extracted data."}), 400
+
+#     connection = get_db_connection()
+#     try:
+#         file_url = None
+#         # Use the file from the session's temporary path for S3 upload
+#         with open(filepath, 'rb') as f:
+#             # We need to create a temporary file-like object for boto3
+#             # or pass the file stream with the correct filename.
+#             # boto3's upload_fileobj needs a filename, so we'll simulate it.
+#             f.name = original_filename
+#             file_url = upload_file_to_s3(f, current_app.config.get("AWS_S3_BUCKET"))
+
+#         if not file_url:
+#             raise Exception("Failed to upload file to S3.")
+
+#         with connection.cursor() as cursor:
+#             sql = """
+#                 INSERT INTO documents (title, category, sub_category, tags, file_path, extracted_data)
+#                 VALUES (%s, %s, %s, %s, %s, %s)
+#             """
+#             params = (
+#                 form_data.get("title"),
+#                 form_data.get("category"),
+#                 form_data.get("sub_category"),
+#                 form_data.get("tags"),
+#                 file_url,
+#                 edited_data_json_str,
+#             )
+#             cursor.execute(sql, params)
+#         connection.commit()
+
+#         log_user_activity(
+#             session.get("admin_id") or session.get("subadmin_id"),
+#             session.get("admin_name") or session.get("subadmin_name"),
+#             session.get("user_type"),
+#             "Create",
+#             "Documents/Submit",
+#             f"Saved new document '{form_data.get('title')}' with S3 URL: {file_url}"
+#         )
+
+#         # Clean up the local temporary file
+#         os.remove(filepath)
+#         session.pop("processing_filepath", None)
+#         session.pop("form_data_for_submission", None)
+#         session.pop("processing_filename", None)
+
+#         return jsonify({"message": "Document and extracted data saved successfully!"})
+#     except Exception as e:
+#         connection.rollback()
+#         current_app.logger.error(f"An unexpected error occurred during submission: {e}")
+#         # Attempt to clean up the temp file even on error
+#         if filepath and os.path.exists(filepath):
+#             os.remove(filepath)
+#         return jsonify({"error": f"An internal error occurred during submission: {str(e)}"}), 500
+#     finally:
+#         connection.close()
+
+# REPLACE the old function with this one
 @main.route("/documents/submit", methods=["POST"])
 @adm_login_required
 def submitDocument():
@@ -1743,7 +1847,7 @@ def submitDocument():
     form_data = session.get("form_data_for_submission")
     original_filename = session.get("processing_filename")
 
-    if not filepath or not form_data:
+    if not filepath or not form_data or not original_filename:
         return jsonify({"error": "Analysis data not found. Please re-analyze the document."}), 400
 
     edited_data_json_str = request.form.get("extracted_data")
@@ -1760,11 +1864,8 @@ def submitDocument():
         file_url = None
         # Use the file from the session's temporary path for S3 upload
         with open(filepath, 'rb') as f:
-            # We need to create a temporary file-like object for boto3
-            # or pass the file stream with the correct filename.
-            # boto3's upload_fileobj needs a filename, so we'll simulate it.
-            f.name = original_filename
-            file_url = upload_file_to_s3(f, current_app.config.get("AWS_S3_BUCKET"))
+            # CHANGED: We now pass the original filename directly to our helper
+            file_url = upload_file_to_s3(f, current_app.config.get("AWS_S3_BUCKET"), original_filename)
 
         if not file_url:
             raise Exception("Failed to upload file to S3.")
@@ -1779,7 +1880,7 @@ def submitDocument():
                 form_data.get("category"),
                 form_data.get("sub_category"),
                 form_data.get("tags"),
-                file_url,
+                file_url, # Use the S3 URL
                 edited_data_json_str,
             )
             cursor.execute(sql, params)
@@ -1793,25 +1894,23 @@ def submitDocument():
             "Documents/Submit",
             f"Saved new document '{form_data.get('title')}' with S3 URL: {file_url}"
         )
-
-        # Clean up the local temporary file
-        os.remove(filepath)
-        session.pop("processing_filepath", None)
-        session.pop("form_data_for_submission", None)
-        session.pop("processing_filename", None)
-
+        
         return jsonify({"message": "Document and extracted data saved successfully!"})
+
     except Exception as e:
         connection.rollback()
         current_app.logger.error(f"An unexpected error occurred during submission: {e}")
-        # Attempt to clean up the temp file even on error
-        if filepath and os.path.exists(filepath):
-            os.remove(filepath)
         return jsonify({"error": f"An internal error occurred during submission: {str(e)}"}), 500
     finally:
+        # Clean up the local temporary file and session data
+        if filepath and os.path.exists(filepath):
+            os.remove(filepath)
+        session.pop("processing_filepath", None)
+        session.pop("form_data_for_submission", None)
+        session.pop("processing_filename", None)
         connection.close()
 
-
+        
 @main.route("/documents/list")
 @adm_login_required
 @subadmin_permission_required("DOCUMENTS.view_documents")
