@@ -1910,7 +1910,82 @@ def submitDocument():
         session.pop("processing_filename", None)
         connection.close()
 
-        
+
+# @main.route("/documents/list")
+# @adm_login_required
+# @subadmin_permission_required("DOCUMENTS.view_documents")
+# def documentList():
+#     search_query = request.args.get("search", "")
+#     category_filter = request.args.get("category", "")
+#     sub_category_filter = request.args.get("sub_category", "")
+#     tags_filter = request.args.get("tags", "")
+
+#     connection = get_db_connection()
+#     documents = []
+#     distinct_categories = []
+#     distinct_sub_categories = []
+#     distinct_tags = []
+#     try:
+#         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+#             base_sql = "SELECT id, title, category, sub_category, tags, description, file_path, DATE_FORMAT(created_at, '%d-%m-%Y %r') as formatted_date FROM documents"
+#             conditions, params = [], []
+
+#             if search_query:
+#                 search_like = f"%{search_query}%"
+#                 conditions.append(
+#                     "(title LIKE %s OR description LIKE %s OR tags LIKE %s OR CAST(extracted_data AS CHAR) LIKE %s)"
+#                 )
+#                 params.extend([search_like, search_like, search_like, search_like])
+#             if category_filter:
+#                 conditions.append("category = %s")
+#                 params.append(category_filter)
+#             if sub_category_filter:
+#                 conditions.append("sub_category = %s")
+#                 params.append(sub_category_filter)
+#             if tags_filter:
+#                 conditions.append("tags = %s")
+#                 params.append(tags_filter)
+
+#             if conditions:
+#                 base_sql += " WHERE " + " AND ".join(conditions)
+#             base_sql += " ORDER BY created_at DESC"
+
+#             cursor.execute(base_sql, tuple(params))
+#             documents = cursor.fetchall()
+
+#             cursor.execute(
+#                 "SELECT DISTINCT category FROM documents WHERE category IS NOT NULL AND category != '' ORDER BY category"
+#             )
+#             distinct_categories = [row["category"] for row in cursor.fetchall()]
+#             cursor.execute(
+#                 "SELECT DISTINCT sub_category FROM documents WHERE sub_category IS NOT NULL AND sub_category != '' ORDER BY sub_category"
+#             )
+#             distinct_sub_categories = [row["sub_category"] for row in cursor.fetchall()]
+#             cursor.execute(
+#                 "SELECT DISTINCT tags FROM documents WHERE tags IS NOT NULL AND tags != '' ORDER BY tags"
+#             )
+#             distinct_tags = [row["tags"] for row in cursor.fetchall()]
+#     except Exception as e:
+#         current_app.logger.error(f"Error fetching document list: {e}")
+#         flash("An error occurred while fetching documents.", "danger")
+#     finally:
+#         connection.close()
+
+#     current_filters = {
+#         "search": search_query,
+#         "category": category_filter,
+#         "sub_category": sub_category_filter,
+#         "tags": tags_filter,
+#     }
+#     return render_template(
+#         "documentsList.html",
+#         documents=documents,
+#         distinct_categories=distinct_categories,
+#         distinct_sub_categories=distinct_sub_categories,
+#         distinct_tags=distinct_tags,
+#         current_filters=current_filters,
+#     )
+
 @main.route("/documents/list")
 @adm_login_required
 @subadmin_permission_required("DOCUMENTS.view_documents")
@@ -1926,8 +2001,9 @@ def documentList():
     distinct_sub_categories = []
     distinct_tags = []
     try:
-        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-            base_sql = "SELECT id, title, category, sub_category, tags, description, file_path, DATE_FORMAT(created_at, '%d-%m-%Y %r') as formatted_date FROM documents"
+        with connection.cursor() as cursor:
+            # CORRECTED: Removed DATE_FORMAT from the SQL query
+            base_sql = "SELECT id, title, category, sub_category, tags, description, file_path, created_at FROM documents"
             conditions, params = [], []
 
             if search_query:
@@ -1953,17 +2029,12 @@ def documentList():
             cursor.execute(base_sql, tuple(params))
             documents = cursor.fetchall()
 
-            cursor.execute(
-                "SELECT DISTINCT category FROM documents WHERE category IS NOT NULL AND category != '' ORDER BY category"
-            )
+            # These other queries are fine
+            cursor.execute("SELECT DISTINCT category FROM documents WHERE category IS NOT NULL AND category != '' ORDER BY category")
             distinct_categories = [row["category"] for row in cursor.fetchall()]
-            cursor.execute(
-                "SELECT DISTINCT sub_category FROM documents WHERE sub_category IS NOT NULL AND sub_category != '' ORDER BY sub_category"
-            )
+            cursor.execute("SELECT DISTINCT sub_category FROM documents WHERE sub_category IS NOT NULL AND sub_category != '' ORDER BY sub_category")
             distinct_sub_categories = [row["sub_category"] for row in cursor.fetchall()]
-            cursor.execute(
-                "SELECT DISTINCT tags FROM documents WHERE tags IS NOT NULL AND tags != '' ORDER BY tags"
-            )
+            cursor.execute("SELECT DISTINCT tags FROM documents WHERE tags IS NOT NULL AND tags != '' ORDER BY tags")
             distinct_tags = [row["tags"] for row in cursor.fetchall()]
     except Exception as e:
         current_app.logger.error(f"Error fetching document list: {e}")
