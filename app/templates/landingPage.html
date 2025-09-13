@@ -107,24 +107,11 @@
     <nav class="navbar">
         <ul class="nav-links">
             <li><a href="/">Home</a></li>
-            
-            <!-- This is the list item that will trigger the dropdown -->
-            <li class="dropdown">
-                <a href="#" class="dropbtn"> Login For Access ▼</a>
-                
-                <!-- This is the hidden dropdown content -->
-                <ul class="dropdown-content">
-                    <li><a href="{{ url_for('main.supAdmlogin') }}">Login With Super Admin </a></li>
-                    <li><a href="{{ url_for('main.admLogin') }}">Login With Admin</a></li>
-                    <li><a href="/">Page Title 3</a></li>
-                </ul>
-            </li>
-
+            <li><a href="{{ url_for('main.admLogin') }}">Login</a></li>
             <li><a href="/">About</a></li>
             <li><a href="/">Contact</a></li>
         </ul>
     </nav>
-
   </header>
   
   <!-- Main Centered Content -->

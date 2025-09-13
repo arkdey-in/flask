@@ -9,7 +9,7 @@ from flask import (
     flash,
     request,
     current_app,
-    abort,
+    send_from_directory,
 )
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
@@ -43,7 +43,7 @@ import openai
 from PyPDF2 import PdfReader, PdfWriter
 from werkzeug.utils import secure_filename
 from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
-
+from azure.ai.documentintelligence.models import AnalyzeDocumentRequest 
 # Azure SDK
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
@@ -59,6 +59,7 @@ from botocore.exceptions import ClientError
 import pymysql.cursors
 import pymysql.err
 
+
 # --- Blueprint Definition ---
 main = Blueprint("main", __name__)
 
@@ -67,7 +68,7 @@ main = Blueprint("main", __name__)
 # Helper Functions
 # ---------------------------------------------------------------------
 
-
+# S3 client and functions
 def get_s3_client():
     """Initializes and returns the Boto3 S3 client using app config."""
     return boto3.client(
@@ -77,24 +78,26 @@ def get_s3_client():
         region_name=current_app.config.get("AWS_REGION"),
     )
 
-
 def upload_file_to_s3(file, bucket_name, acl="public-read"):
     """Uploads a file object to S3."""
     s3_client = get_s3_client()
     try:
         s3_client.upload_fileobj(
-            file,
+            file,  # This is the file object
             bucket_name,
             file.filename,
-            ExtraArgs={"ACL": acl, "ContentType": file.content_type},
+            ExtraArgs={
+                "ACL": acl,
+                "ContentType": file.content_type
+            }
         )
+        # Generate the URL
         aws_region = current_app.config.get("AWS_REGION")
         url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{file.filename}"
         return url
     except ClientError as e:
-        current_app.logger.error(f"Error uploading to S3: {e}")
+        print(f"Error uploading to S3: {e}")
         return None
-
 
 def delete_file_from_s3(key, bucket_name):
     """Deletes a file from S3 using its key (filename)."""
@@ -106,7 +109,6 @@ def delete_file_from_s3(key, bucket_name):
         current_app.logger.error(f"Error deleting file from S3: {e}")
         return False
 
-
 def get_db_connection():
     """Establishes and returns a database connection using app config."""
     return pymysql.connect(
@@ -117,13 +119,37 @@ def get_db_connection():
         cursorclass=pymysql.cursors.DictCursor,
     )
 
+def get_client_ip():
+    """Gets the client's IP address, handling proxies."""
+    if "X-Forwarded-For" in request.headers:
+        forwarded_ips = request.headers["X-Forwarded-For"].split(",")
+        client_ip = forwarded_ips[0].strip()
+        if not re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", client_ip):
+            client_ip = request.remote_addr
+    else:
+        client_ip = request.remote_addr
+    return client_ip
 
-# @main.before_request
-# def check_access():
-#     # Example: A rule that might incorrectly block ngrok
-#     if not request.host.endswith('localhost'):
-#         # This kind of check would cause a 403 with ngrok
-#         abort(403)
+def log_user_activity(user_id, user_name, user_type, event_type, model, value):
+    """Logs user activity to the unified user_activities table."""
+    connection = get_db_connection()
+    try:
+        client_ip = get_client_ip()
+        with connection.cursor() as cursor:
+            sql = """
+            INSERT INTO user_activities
+            (user_id, user_name, user_type, user_ip, event_type, model, value)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(
+                sql, (user_id, user_name, user_type, client_ip, event_type, model, value)
+            )
+        connection.commit()
+    except Exception as e:
+        current_app.logger.error(f"Failed to log user activity: {e}")
+        connection.rollback()
+    finally:
+        connection.close()
 
 
 def get_azure_client():
@@ -136,7 +162,6 @@ def get_azure_client():
         endpoint=endpoint, credential=AzureKeyCredential(key)
     )
 
-
 def allowed_file(filename):
     """Checks if the file extension is allowed."""
     return (
@@ -144,7 +169,6 @@ def allowed_file(filename):
         and filename.rsplit(".", 1)[1].lower()
         in current_app.config["ALLOWED_EXTENSIONS"]
     )
-
 
 def compress_image(image_path, quality=85):
     """Compresses an image file."""
@@ -164,7 +188,6 @@ def get_file_content_as_bytes(filepath):
     with open(filepath, "rb") as f:
         return f.read()
 
-
 def get_pdf_page_count(filepath):
     """Gets the number of pages in a PDF file."""
     try:
@@ -175,59 +198,33 @@ def get_pdf_page_count(filepath):
         current_app.logger.error(f"Could not read PDF page count for {filepath}: {e}")
         return 0
 
-
-def get_client_ip():
-    if "X-Forwarded-For" in request.headers:
-        client_ip = request.headers["X-Forwarded-For"].split(",")[0].strip()
-    else:
-        client_ip = request.remote_addr
-    return client_ip
-
-
-def super_admin_activities(superadmin_id, superadmin_name, event_type, model, value):
+def does_superadmin_exist():
+    """Checks the DB and returns True if a superadmin exists, False otherwise."""
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
-            sql = "INSERT INTO super_admin_activities (superadmin_id, superadmin_name, superadmin_ip, event_type, model, value) VALUES (%s, %s, %s, %s, %s, %s)"
-            cursor.execute(
-                sql,
-                (
-                    superadmin_id,
-                    superadmin_name,
-                    get_client_ip(),
-                    event_type,
-                    model,
-                    value,
-                ),
-            )
-        connection.commit()
+            #  use "SELECT 1" because it's the most efficient way to check for existence
+            cursor.execute("SELECT 1 FROM superadmin LIMIT 1")
+            result = cursor.fetchone()
+            # If fetchone() finds a row, result is not None, so return True
+            return result is not None
     except Exception as e:
-        current_app.logger.error(f"Failed to log super admin activity: {e}")
-        connection.rollback()
+        # Log the error and assume the worst case (don't allow registration)
+        current_app.logger.error(f"Database error checking for superadmin: {e}")
+        return True # Fail-safe
     finally:
         connection.close()
 
-
-def admin_activities(admin_id, admin_name, event_type, model, value):
-    connection = get_db_connection()
-    try:
-        with connection.cursor() as cursor:
-            sql = "INSERT INTO admin_activities (admin_id, admin_name, admin_ip, event_type, model, value) VALUES (%s, %s, %s, %s, %s, %s)"
-            cursor.execute(
-                sql, (admin_id, admin_name, get_client_ip(), event_type, model, value)
-            )
-        connection.commit()
-    except Exception as e:
-        current_app.logger.error(f"Failed to log admin activity: {e}")
-        connection.rollback()
-    finally:
-        connection.close()
-
-
+@main.context_processor
+def inject_registration_status():
+    """Injects a variable into all templates to show/hide the registration link."""
+    # The variable will be True if registration is allowed (no superadmin exists)
+    # and False if it's disabled.
+    registration_enabled = not does_superadmin_exist()
+    return dict(registration_enabled=registration_enabled)
 # ---------------------------------------------------------------------
 # Tesseract OCR (fallback / image-only PDFs)
 # ---------------------------------------------------------------------
-
 
 def perform_tesseract_ocr(filepath, mime_type):
     """
@@ -243,12 +240,12 @@ def perform_tesseract_ocr(filepath, mime_type):
     poppler_bin_path = (
         current_app.config.get("POPPLER_PATH")
         or os.getenv("POPPLER_PATH")
-        or "/usr/bin"  # Standard path for poppler-utils on Ubuntu
+        or "/usr/bin"
     )
     tesseract_path = (
         current_app.config.get("TESSERACT_CMD")
         or os.getenv("TESSERACT_CMD")
-        or "tesseract"  # resolve from PATH
+        or "tesseract"
     )
 
     try:
@@ -328,25 +325,45 @@ def perform_tesseract_ocr(filepath, mime_type):
 # ---------------------------------------------------------------------
 
 
+# AFTER (The correct code)
+# def _azure_analyze_file(client, model_id, file_path_or_bytes):
+#     """
+#     Calls Azure DI Read/Layout and returns the result object.
+#     Accepts either bytes or a path to keep memory usage predictable on big docs.
+#     """
+#     if isinstance(file_path_or_bytes, (bytes, bytearray)):
+#         poller = client.begin_analyze_document(
+#             model_id=model_id,
+#             document=file_path_or_bytes,  # <--- CORRECTED
+#             content_type="application/pdf",
+#         )
+#     else:
+#         with open(file_path_or_bytes, "rb") as f:
+#             poller = client.begin_analyze_document(
+#                 model_id=model_id,
+#                 document=f,  # <--- CORRECTED
+#                 content_type="application/pdf",
+#             )
+#     return poller.result()
+
+
 def _azure_analyze_file(client, model_id, file_path_or_bytes):
     """
     Calls Azure DI Read/Layout and returns the result object.
     Accepts either bytes or a path to keep memory usage predictable on big docs.
     """
-    # This branch is for pre-loaded content, not used by the main path
     if isinstance(file_path_or_bytes, (bytes, bytearray)):
+        # If we already have bytes, wrap them in the request object
         poller = client.begin_analyze_document(
             model_id=model_id,
-            body=file_path_or_bytes,
-            content_type="application/pdf",
+            analyze_request=AnalyzeDocumentRequest(bytes_source=file_path_or_bytes)
         )
-    # OPTIMIZATION: Pass the file stream directly instead of reading all bytes into RAM
     else:
+        # If we have a file path, open it, read the bytes, and wrap them
         with open(file_path_or_bytes, "rb") as f:
             poller = client.begin_analyze_document(
                 model_id=model_id,
-                body=f,  # Pass the file stream object 'f'
-                content_type="application/pdf",
+                analyze_request=AnalyzeDocumentRequest(bytes_source=f.read())
             )
     return poller.result()
 
@@ -366,15 +383,6 @@ def perform_azure_ocr(filepath, model_id="prebuilt-read", max_retries=3):
     client = get_azure_client()
     if not client:
         raise ConnectionError("Azure client not initialized. Check your config.")
-
-    # check if the PDF is valid and has pages before sending.
-    # total_pages = get_pdf_page_count(filepath)
-    # if total_pages == 0:
-    #     raise ValueError("Could not determine page count or the PDF is empty/corrupt.")
-
-    # current_app.logger.info(
-    #     f"[Azure OCR] Document has {total_pages} pages. Analyzing entire file in a single request (Premium Tier)."
-    # )
 
     last_exception = None
     for attempt in range(max_retries):
@@ -484,7 +492,7 @@ def analyze_document_with_openai(ocr_text, doc_types_path="document_types.json")
     {ocr_text}
     ---
 
-    Provide all the data from all pages 
+    Provide all the data from all pages
     """
 
     try:
@@ -512,24 +520,30 @@ def sup_adm_login_required(f):
     def decorated_function(*args, **kwargs):
         if "sup_adm_id" not in session:
             flash("You need to log in first.", "warning")
-            return redirect(url_for("main.supAdmlogin", next=request.url))
+            return redirect(url_for("main.admLogin", next=request.url))
         return f(*args, **kwargs)
-
     return decorated_function
 
 
 def load_subadmin_permissions():
+    """Load subadmin permissions into session"""
     if "subadmin_id" in session and "role_id" in session:
         connection = get_db_connection()
         try:
-            with connection.cursor() as cursor:  
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                 cursor.execute(
                     "SELECT permissions FROM subadminroles WHERE r_id = %s",
                     (session["role_id"],),
                 )
                 role_data = cursor.fetchone()
+                
                 if role_data and role_data["permissions"]:
-                    session["permissions"] = json.loads(role_data["permissions"])
+                    try:
+                        permissions = json.loads(role_data["permissions"])
+                        session["permissions"] = permissions
+                    except json.JSONDecodeError as e:
+                        print(f"JSON decode error: {e}")
+                        session["permissions"] = {}
                 else:
                     session["permissions"] = {}
         except Exception as e:
@@ -537,6 +551,8 @@ def load_subadmin_permissions():
             session["permissions"] = {}
         finally:
             connection.close()
+    else:
+        print("Cannot load permissions: subadmin_id or role_id not in session")
 
 
 def adm_login_required(f):
@@ -560,7 +576,6 @@ def subadmin_permission_required(permission_key):
     Decorator to check if subadmin has specific permission.
     permission_key format: "MODULE.ACTION" (e.g., "CATEGORIES.create_category")
     """
-
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
@@ -591,7 +606,6 @@ def subadmin_permission_required(permission_key):
                         current_app.logger.error(
                             f"Permission check error for {permission_key}: {e}"
                         )
-                        # Fall through to permission denied
 
                 # Permission denied - render access denied page
                 return render_template("accessdenied.html"), 403
@@ -601,7 +615,6 @@ def subadmin_permission_required(permission_key):
             return redirect(url_for("main.admLogin"))
 
         return decorated_function
-
     return decorator
 
 
@@ -663,16 +676,15 @@ class supAdmRegistrationForm(FlaskForm):
         connection = get_db_connection()
         try:
             with connection.cursor() as cursor:
-                cursor.execute(
-                    "SELECT * FROM superadmin WHERE superadmin_email=%s", (email.data,)
-                )
+                cursor.execute("SELECT * FROM superadmin WHERE superadmin_email=%s", (email.data,))
                 if cursor.fetchone():
-                    raise ValidationError(
-                        "Email already exists. Please choose another."
-                    )
+                    raise ValidationError("Email already exist in super admin portal . Please choose another.")
+                
+                cursor.execute("SELECT * FROM admin WHERE admin_email=%s", (email.data,))
+                if cursor.fetchone():
+                    raise ValidationError("Email already exist in admin portal. Please choose another.")
         finally:
-            if connection:
-                connection.close()
+            connection.close()
 
 
 class supAdmLoginForm(FlaskForm):
@@ -708,16 +720,16 @@ class admRegisterForm(FlaskForm):
         connection = get_db_connection()
         try:
             with connection.cursor() as cursor:
-                cursor.execute(
-                    "SELECT * FROM admin WHERE admin_email=%s", (email.data,)
-                )
+
+                cursor.execute("SELECT * FROM superadmin WHERE superadmin_email=%s", (email.data,))
                 if cursor.fetchone():
-                    raise ValidationError(
-                        "Email already exists. Please choose another."
-                    )
+                    raise ValidationError("Email already exist in super admin portal . Please choose another.")
+                
+                cursor.execute("SELECT * FROM admin WHERE admin_email=%s", (email.data,))
+                if cursor.fetchone():
+                    raise ValidationError("Email already exist in admin portal. Please choose another.")
         finally:
-            if connection:
-                connection.close()
+            connection.close()
 
 
 # ---------------------------------------------------------------------
@@ -727,84 +739,74 @@ class admRegisterForm(FlaskForm):
 
 @main.route("/superadmin/supadmregistration", methods=["GET", "POST"])
 def supAdmRegistration():
+    if does_superadmin_exist():
+        flash("Registration is disabled. Only one superadmin account is allowed.", "warning")
+        return redirect(url_for("main.admLogin")) # Redirect to the main login
+    
     form = supAdmRegistrationForm()
     if form.validate_on_submit():
         hashed_password = bcrypt.hashpw(
             form.password.data.encode("utf-8"), bcrypt.gensalt()
         )
+        
         connection = get_db_connection()
         try:
             with connection.cursor() as cursor:
                 cursor.execute(
                     "INSERT INTO superadmin (superadmin_name, superadmin_email, superadmin_password) VALUES (%s, %s, %s)",
-                    (form.name.data, form.email.data, hashed_password),
+                    (form.name.data, form.email.data, hashed_password)
                 )
-                # Fetch the newly created user for logging
-                cursor.execute(
-                    "SELECT * FROM superadmin WHERE superadmin_email=%s",
-                    (form.email.data,),
-                )
-                user = cursor.fetchone()
-            connection.commit()
-
-            if user:
-                super_admin_activities(
-                    user["superadmin_id"],
-                    user["superadmin_name"],
-                    "Registration",
-                    "Landing Page/Registration",
-                    f"New Super Admin Registered, Id : {user['superadmin_id']}, Name : {user['superadmin_name']}, Email : {user['superadmin_email']}",
-                )
-
+                connection.commit()
+                
             flash("Registration successful! Please log in.", "success")
-            return redirect(url_for("main.supAdmlogin"))
+            return redirect(url_for("main.admLogin"))
+            
         except Exception as e:
             connection.rollback()
-            flash(f"Error during registration: {e}", "danger")
+            flash(f"Error during registration: {str(e)}", "danger")
         finally:
             connection.close()
-
+    
     return render_template("supAdmRegistration.html", form=form)
 
-
-@main.route("/superadmin/supadmlogin", methods=["GET", "POST"])
-def supAdmlogin():
-    form = supAdmLoginForm()
-    if form.validate_on_submit():
-        user = None
-        connection = get_db_connection()
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    "SELECT * FROM superadmin WHERE superadmin_email=%s",
-                    (form.email.data,),
-                )
-                user = cursor.fetchone()
-        except Exception as e:
-            flash(f"Error during login: {e}", "danger")
-        finally:
-            connection.close()
-
-        if user and bcrypt.checkpw(
-            form.password.data.encode("utf-8"),
-            user["superadmin_password"].encode("utf-8"),
-        ):
-            session["sup_adm_id"] = user["superadmin_id"]
-            session["sup_adm_name"] = user["superadmin_name"]
-            session["sup_adm_mail"] = user["superadmin_email"]
-
-            super_admin_activities(
-                user["superadmin_id"],
-                user["superadmin_name"],
-                "Login",
-                "Landing Page/Login",
-                f"Super Admin logged in, Id : {user['superadmin_id']}, Name : {user['superadmin_name']}, Email : {user['superadmin_email']}",
-            )
-            return redirect(url_for("main.supAdmDashboard"))
-        else:
-            flash("Login failed. Please check your email and password.", "error")
-            return redirect(url_for("main.supAdmlogin"))
-    return render_template("supAdmLogin.html", form=form)
+# @main.route("/superadmin/supadmlogin", methods=["GET", "POST"])
+# def supAdmlogin():
+#     form = supAdmLoginForm()
+#     if form.validate_on_submit():
+#         connection = get_db_connection()
+#         try:
+#             with connection.cursor() as cursor:
+#                 cursor.execute(
+#                     "SELECT * FROM superadmin WHERE superadmin_email=%s", (form.email.data,)
+#                 )
+#                 user = cursor.fetchone()
+                
+#             if user and bcrypt.checkpw(
+#                 form.password.data.encode("utf-8"), user['superadmin_password'].encode("utf-8")
+#             ):
+#                 session["sup_adm_id"] = user['superadmin_id']
+#                 session["sup_adm_name"] = user['superadmin_name']
+#                 session["sup_adm_mail"] = user['superadmin_email']
+                
+#                 log_user_activity(
+#                     user['superadmin_id'],
+#                     user['superadmin_name'],
+#                     "Super Admin",
+#                     "Login",
+#                     "Landing Page/Login",
+#                     f"Super Admin logged in, Id: {user['superadmin_id']}"
+#                 )
+                
+#                 return redirect(url_for("main.supAdmDashboard"))
+#             else:
+#                 flash("Login failed. Please check your email and password.", "error")
+                
+#         except Exception as e:
+#             flash(f"Error during login: {str(e)}", "danger")
+#         finally:
+#             connection.close()
+            
+#     return render_template("supAdmLogin.html", form=form)
 
 
 @main.route("/superadmin/supadmdashboard")
@@ -817,19 +819,20 @@ def supAdmDashboard():
 @sup_adm_login_required
 def supAdmLogout():
     try:
-        super_admin_activities(
+        log_user_activity(
             session["sup_adm_id"],
             session.get("sup_adm_name", "Unknown"),
+            "Super Admin",
             "Logout",
             "Landing Page/Logout",
-            f"Super Admin Logged out, Id : {session['sup_adm_id']}, Name : {session['sup_adm_name']}, Email :{session['sup_adm_mail']} ",
+            f"Super Admin Logged out, Id : {session['sup_adm_id']}",
         )
     except Exception as e:
         current_app.logger.error(f"Error logging out superadmin: {e}")
-
+    
     session.clear()
     flash("You have been logged out successfully.", "success")
-    return redirect(url_for("main.supAdmlogin"))
+    return redirect(url_for("main.admLogin"))
 
 
 @main.route("/superadmin/supadmprofile", methods=["GET", "POST"])
@@ -837,18 +840,17 @@ def supAdmLogout():
 def supAdmProfile():
     connection = get_db_connection()
     try:
-        with connection.cursor() as cursor:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute(
-                "SELECT * FROM superadmin WHERE superadmin_id = %s",
-                (session["sup_adm_id"],),
+                "SELECT * FROM superadmin WHERE superadmin_id = %s", (session["sup_adm_id"],)
             )
             superadmin = cursor.fetchone()
-        print(f"Fetched user: {superadmin}")
-        return render_template("supAdmProfile.html", superadmin=superadmin)
+            print(f"Fetched user: {superadmin}")
+            return render_template("supAdmProfile.html", superadmin=superadmin)
     except Exception as e:
         current_app.logger.error(f"Error fetching superadmin profile: {e}")
         flash("An error occurred while fetching your profile.", "danger")
-        return redirect(url_for("main.supAdmDashboard"))
+        return redirect(url_for("main.supAdmlogin"))
     finally:
         connection.close()
 
@@ -864,7 +866,7 @@ def supAdmCreateAdmin():
 
         connection = get_db_connection()
         try:
-            with connection.cursor() as cursor:
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                 cursor.execute(
                     "INSERT INTO admin (admin_name, admin_email, admin_password, superadmin_id) VALUES (%s, %s, %s, %s)",
                     (
@@ -874,19 +876,17 @@ def supAdmCreateAdmin():
                         session["sup_adm_id"],
                     ),
                 )
+                connection.commit()
+                flash("New Admin Created successfully", "success")
 
                 cursor.execute(
                     "SELECT * FROM admin WHERE admin_email = %s", (form.email.data,)
                 )
                 admin = cursor.fetchone()
-            connection.commit()
-
-            flash("New Admin Created successfully", "success")
-
-            if admin:
-                super_admin_activities(
+                log_user_activity(
                     session["sup_adm_id"],
                     session.get("sup_adm_name", "Unknown"),
+                    "Super Admin",
                     "Add",
                     "App/Admin Portal/Creat Admin",
                     f"Created New Admin Name : {admin['admin_name']} with admin id :{admin['admin_id']} by Super Admin ({session['sup_adm_name']}), Id : {session['sup_adm_id']}",
@@ -897,14 +897,12 @@ def supAdmCreateAdmin():
         finally:
             connection.close()
 
-    # Fetch admin list to display on the page
-    adminlist = []
     connection = get_db_connection()
+    adminlist = []
     try:
-        with connection.cursor() as cursor:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
             query = """
-                SELECT a.admin_id, a.admin_name, a.admin_email, a.created_at,
-                       s.superadmin_id, s.superadmin_name
+                SELECT a.admin_id, a.admin_name, a.admin_email, a.created_at, s.superadmin_id, s.superadmin_name
                 FROM admin AS a
                 INNER JOIN superadmin AS s ON a.superadmin_id = s.superadmin_id
                 ORDER BY a.admin_id ASC
@@ -912,13 +910,17 @@ def supAdmCreateAdmin():
             cursor.execute(query)
             adminlist = cursor.fetchall()
     except Exception as e:
-        flash("Error fetching admin list.", "danger")
         current_app.logger.error(f"Error fetching admin list: {e}")
+        flash("An error occurred while fetching admin list.", "danger")
     finally:
         connection.close()
-
+    
     return render_template("supAdmAdmin.html", form=form, adminlist=adminlist)
 
+
+#
+# PASTE THIS ENTIRE CORRECTED FUNCTION IN app/routes.py
+#
 
 @main.route("/superadmin/supadmactivities")
 @sup_adm_login_required
@@ -929,54 +931,67 @@ def supAdmActivities():
     admin_filter = request.args.get("admin")
     date_from = request.args.get("date_from")
     date_to = request.args.get("date_to")
-
-    activities, event_types = [], []
-    total = 0
+    
     connection = get_db_connection()
-    try:
-        with connection.cursor() as cursor:
-            # Base query
-            query = "SELECT * FROM super_admin_activities"
-            conditions, params = [], []
+    activities = []
+    total = 0
+    event_types = []
 
-            # Apply filters
+    try:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            # --- CORRECTION 1: Query the correct table and filter for Super Admin ---
+            query = "SELECT * FROM user_activities WHERE user_type = 'Super Admin'"
+            
+            conditions = []
+            params = []
+            
             if event_type:
                 conditions.append("event_type = %s")
                 params.append(event_type)
+            
             if admin_filter:
-                conditions.append("superadmin_name LIKE %s")
+                # --- CORRECTION 2: Use the correct column name 'user_name' ---
+                conditions.append("user_name LIKE %s")
                 params.append(f"%{admin_filter}%")
+            
             if date_from:
                 conditions.append("event_time >= %s")
                 params.append(date_from)
+            
             if date_to:
                 conditions.append("event_time <= %s")
                 params.append(f"{date_to} 23:59:59")
 
+            # The 'WHERE' is already in the base query, so we start with 'AND'
             if conditions:
-                query += " WHERE " + " AND ".join(conditions)
+                query += " AND " + " AND ".join(conditions)
 
+            # Use a slightly different approach for count_query to be safe
             count_query = f"SELECT COUNT(*) as total FROM ({query}) as filtered"
+            
+            # We pass the full params list to the count query
             cursor.execute(count_query, tuple(params))
-            total = cursor.fetchone()["total"]
+            total_result = cursor.fetchone()
+            total = total_result['total'] if total_result else 0
+
 
             query += " ORDER BY id DESC LIMIT %s OFFSET %s"
             params.extend([per_page, (page - 1) * per_page])
             cursor.execute(query, tuple(params))
             activities = cursor.fetchall()
 
+            # --- CORRECTION 3: Get distinct event types from the correct table ---
             cursor.execute(
-                "SELECT DISTINCT event_type FROM super_admin_activities ORDER BY event_type"
+                "SELECT DISTINCT event_type FROM user_activities WHERE user_type = 'Super Admin' ORDER BY event_type"
             )
             event_types = [row["event_type"] for row in cursor.fetchall()]
 
     except Exception as e:
-        current_app.logger.error(f"Error fetching activities: {e}")
+        current_app.logger.error(f"Error fetching superadmin activities: {e}")
         flash("An error occurred while fetching activities.", "danger")
     finally:
         connection.close()
 
-    # Pagination metadata
     total_pages = (total + per_page - 1) // per_page if total > 0 else 0
     page_items, last_page = [], 0
     for page_num in range(1, total_pages + 1):
@@ -985,7 +1000,7 @@ def supAdmActivities():
                 page_items.append(None)
             page_items.append(page_num)
             last_page = page_num
-
+    
     pagination = {
         "page": page,
         "per_page": per_page,
@@ -1010,22 +1025,18 @@ def supAdmActivities():
             "date_to": date_to,
         },
     )
-
-
 # ---------------------------------------------------------------------
-#  Authentication Routes -> Admin Authentication -> Routes
+# Authentication Routes -> Admin Authentication -> Routes
 # ---------------------------------------------------------------------
 
 # ---------------------------------------------------------------------
 # Forms
 # ---------------------------------------------------------------------
 
-
 class LoginForm(FlaskForm):
     email = StringField("Email", validators=[DataRequired(), Email()])
     password = PasswordField("Password", validators=[DataRequired()])
     submit = SubmitField("Login")
-
 
 @main.route("/admin/admlogin", methods=["GET", "POST"])
 def admLogin():
@@ -1033,88 +1044,85 @@ def admLogin():
     if form.validate_on_submit():
         connection = get_db_connection()
         try:
-            with connection.cursor() as cursor:
-                # First, check if it's an admin
-                cursor.execute(
-                    "SELECT * FROM admin WHERE admin_email=%s", (form.email.data,)
-                )
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+                # checking if it's an super admin
+                cursor.execute("SELECT * FROM superadmin WHERE superadmin_email=%s", (form.email.data,))
+                superadmin = cursor.fetchone()
+
+                if superadmin:
+                  if superadmin and bcrypt.checkpw(
+                   form.password.data.encode("utf-8"), superadmin['superadmin_password'].encode("utf-8") ):
+                    session["sup_adm_id"] = superadmin['superadmin_id']
+                    session["sup_adm_name"] = superadmin['superadmin_name']
+                    session["sup_adm_mail"] = superadmin['superadmin_email']
+                
+                    log_user_activity(
+                      superadmin['superadmin_id'],
+                      superadmin['superadmin_name'],
+                      "Super Admin",
+                      "Login",
+                      "Landing Page/Login",
+                      f"Super Admin logged in, Id: {superadmin['superadmin_id']}"
+                   )
+                
+                  return redirect(url_for("main.supAdmDashboard"))
+
+
+                # checking if it's an admin
+                cursor.execute("SELECT * FROM admin WHERE admin_email=%s", (form.email.data,))
                 user = cursor.fetchone()
 
                 if user:
-                    print(f"Admin found: {user}")
-                    password_hash = user.get("admin_password")
-                    if not password_hash:
-                        # Continue to check subadmin if admin has no password
-                        pass
-                    # Check if it's a bcrypt hash
-                    elif password_hash.startswith("$2b$"):
-                        if bcrypt.checkpw(
-                            form.password.data.encode("utf-8"),
-                            password_hash.encode("utf-8"),
-                        ):
-                            session["admin_id"] = user["admin_id"]
-                            session["admin_name"] = user["admin_name"]
-                            session["admin_mail"] = user["admin_email"]
-                            session["user_type"] = "admin"
-                            admin_activities(
-                                user["admin_id"],
-                                user["admin_name"],
-                                "Login",
-                                "Landing Page/Login",
-                                f"Admin logged in, Id: {user['admin_id']}",
-                            )
-                            return redirect(url_for("main.admDashboard"))
-                    # Fallback to werkzeug hash
-                    elif check_password_hash(password_hash, form.password.data):
+                    if bcrypt.checkpw(form.password.data.encode("utf-8"), user["admin_password"].encode("utf-8")):
                         session["admin_id"] = user["admin_id"]
                         session["admin_name"] = user["admin_name"]
                         session["admin_mail"] = user["admin_email"]
                         session["user_type"] = "admin"
-                        admin_activities(
+                        log_user_activity(
                             user["admin_id"],
                             user["admin_name"],
+                            "Admin",
                             "Login",
                             "Landing Page/Login",
-                            f"Admin logged in, Id: {user['admin_id']}",
+                            f"Admin logged in, Id: {user['admin_id']}, Name: {user['admin_name']}, Email: {user['admin_email']}",
                         )
                         return redirect(url_for("main.admDashboard"))
-
-                # If not a valid admin, check if it's a subadmin
+                
+                # If not an admin, checking if it's a subadmin
                 cursor.execute(
                     "SELECT * FROM subadmin WHERE subadmin_email=%s", (form.email.data,)
                 )
                 subadmin_user = cursor.fetchone()
 
                 if subadmin_user:
-                    print(f"Subadmin found: {subadmin_user}")
                     password_hash = subadmin_user.get("subadmin_password")
-                    if password_hash and bcrypt.checkpw(
-                        form.password.data.encode("utf-8"),
-                        password_hash.encode("utf-8"),
-                    ):
+                    if password_hash and bcrypt.checkpw(form.password.data.encode("utf-8"), password_hash.encode("utf-8")):
                         session["subadmin_id"] = subadmin_user["subadmin_id"]
                         session["subadmin_name"] = subadmin_user["subadmin_name"]
                         session["subadmin_email"] = subadmin_user["subadmin_email"]
-                        session["subadmin_username"] = subadmin_user[
-                            "subadmin_username"
-                        ]
+                        session["subadmin_username"] = subadmin_user["subadmin_username"]
                         session["role_id"] = subadmin_user["role_id"]
                         session["user_type"] = "subadmin"
                         load_subadmin_permissions()
-                        print(f"Permissions loaded: {session.get('permissions')}")
-                        # You would log subadmin activity here if you have a unified logger
+                        log_user_activity(
+                            subadmin_user["subadmin_id"],
+                            subadmin_user["subadmin_name"],
+                            "Subadmin",
+                            "Login",
+                            "Landing Page/Login",
+                            f"Subadmin logged in, Id: {subadmin_user['subadmin_id']}, Name: {subadmin_user['subadmin_name']}",
+                        )
                         return redirect(url_for("main.admDashboard"))
-
+        
         except Exception as e:
             current_app.logger.error(f"Error during login: {e}")
-            flash(f"An error occurred during login: {e}", "danger")
+            flash(f"Error during login: {str(e)}", "danger")
         finally:
-            if connection:
-                connection.close()
+            connection.close()
 
         flash("Login failed. Please check your email and password.", "error")
         return redirect(url_for("main.admLogin"))
-
+    
     return render_template("admLogin.html", form=form)
 
 
@@ -1124,7 +1132,6 @@ def admLogin():
 def admDashboard():
     return render_template("admDashboard.html")
 
-
 @main.route("/admin/admlogout")
 @adm_login_required
 def admLogout():
@@ -1132,17 +1139,15 @@ def admLogout():
         user_id = session.get("admin_id") or session.get("subadmin_id")
         user_name = session.get("admin_name") or session.get("subadmin_name")
         user_type = session.get("user_type")
-
-        # Note: This uses admin_activities logger. For subadmins, you might want a separate logger or a unified one.
-        # Sticking to the provided function names.
-        if user_type == "admin":
-            admin_activities(
-                user_id,
-                user_name,
-                "Logout",
-                "Landing Page/Logout",
-                f"{user_type.capitalize()} logged out, Id: {user_id}",
-            )
+        
+        log_user_activity(
+            user_id,
+            user_name,
+            user_type,
+            "Logout",
+            "Landing Page/Logout",
+            f"{user_type} logged out, Id: {user_id}, Name: {user_name}",
+        )
     except Exception as e:
         current_app.logger.error(f"Error logging out admin/subadmin: {e}")
 
@@ -1150,45 +1155,34 @@ def admLogout():
     flash("You have been logged out successfully.", "success")
     return redirect(url_for("main.admLogin"))
 
-
 @main.route("/admin/admprofile")
 @adm_login_required
 def admProfile():
     connection = get_db_connection()
     user = None
     try:
-        with connection.cursor() as cursor:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
             if "admin_id" in session:
-                cursor.execute(
-                    "SELECT * FROM admin WHERE admin_id = %s", (session["admin_id"],)
-                )
-                user = cursor.fetchone()
+                cursor.execute("SELECT * FROM admin WHERE admin_id = %s", (session["admin_id"],))
             elif "subadmin_id" in session:
-                cursor.execute(
-                    "SELECT * FROM subadmin WHERE subadmin_id = %s",
-                    (session["subadmin_id"],),
-                )
-                user = cursor.fetchone()
-
+                cursor.execute("SELECT * FROM subadmin WHERE subadmin_id = %s", (session["subadmin_id"],))
+            
+            user = cursor.fetchone()
             if not user:
                 flash("User not found.", "danger")
                 return redirect(url_for("main.admLogin"))
-
-            return render_template(
-                "admProfile.html", user=user, user_type=session.get("user_type")
-            )
+            
+            return render_template("admProfile.html", user=user, user_type=session.get("user_type"))
     except Exception as e:
-        current_app.logger.error(f"Error fetching profile: {e}")
+        current_app.logger.error(f"Error fetching admin/subadmin profile: {e}")
         flash("An error occurred while fetching your profile.", "danger")
         return redirect(url_for("main.admLogin"))
     finally:
         connection.close()
 
-
 # # ---------------------------------------------------------------------
 # # Master: Categories
 # # ---------------------------------------------------------------------
-
 
 @main.route("/master/categories")
 @adm_login_required
@@ -1197,7 +1191,7 @@ def categories():
     connection = get_db_connection()
     all_categories = []
     try:
-        with connection.cursor() as cursor:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute(
                 "SELECT c_id , category_name, DATE_FORMAT(c_created_at, '%d-%m-%Y %r') as c_created_at FROM categories ORDER BY c_id ASC"
             )
@@ -1218,7 +1212,7 @@ def add_category():
     if not category_name:
         flash("Category name cannot be empty.", "danger")
         return redirect(url_for("main.categories"))
-
+    
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
@@ -1227,14 +1221,15 @@ def add_category():
             )
         connection.commit()
 
-        # admin_activities(
-        #     session.get("admin_id") or session.get("subadmin_id"),
-        #     session.get("admin_name") or session.get("subadmin_name"),
-        #     'Create',
-        #     'App/Master Entries/Categories',
-        #     f"Created New Category Called '{category_name}'"
-        # )
-
+        log_user_activity(
+            session.get("admin_id") or session.get("subadmin_id"),
+            session.get("admin_name") or session.get("subadmin_name"),
+            session.get("user_type"),
+            'Create',
+            'App/Master Entries/Categories',
+            f"Created New Category Called '{category_name}'"
+        )
+        
         flash("Category added successfully!", "success")
     except pymysql.err.IntegrityError:
         connection.rollback()
@@ -1251,50 +1246,48 @@ def add_category():
 @adm_login_required
 @subadmin_permission_required("CATEGORIES.edit_category")
 def edit_category(cat_id):
-    if request.method == "POST":
-        new_name = request.form.get("categoryName")
-        if not new_name:
-            flash("Category name cannot be empty.", "danger")
-            return redirect(url_for("main.categories"))
-
-        connection = get_db_connection()
-        try:
+    connection = get_db_connection()
+    try:
+        if request.method == "POST":
+            new_name = request.form.get("categoryName")
+            if not new_name:
+                flash("Category name cannot be empty.", "danger")
+                return redirect(url_for("main.categories"))
+            
             with connection.cursor() as cursor:
                 cursor.execute(
                     "UPDATE categories SET category_name = %s WHERE c_id = %s",
                     (new_name, cat_id),
                 )
             connection.commit()
-
-            # admin_activities(...)
-
+            
+            log_user_activity(
+                session.get("admin_id") or session.get("subadmin_id"),
+                session.get("admin_name") or session.get("subadmin_name"),
+                session.get("user_type"),
+                'Edit',
+                'App/Master Entries/Categories',
+                f"Edited Category '{new_name}' with Category ID = '{cat_id}'"
+            )
+            
             flash("Category updated successfully!", "success")
-        except pymysql.err.IntegrityError:
-            connection.rollback()
-            flash("Another category with this name already exists.", "danger")
-        except Exception as e:
-            connection.rollback()
-            flash(f"An error occurred: {e}", "danger")
-        finally:
-            connection.close()
-    else:
-        # Note: This GET part fetches data but then immediately redirects.
-        # Preserving original behavior.
-        connection = get_db_connection()
-        try:
-            with connection.cursor() as cursor:
+        else:
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                 cursor.execute(
-                    "SELECT c_id, category_name FROM categories WHERE c_id = %s",
-                    (cat_id,),
+                    "SELECT c_id, category_name FROM categories WHERE c_id = %s", (cat_id,)
                 )
                 category = cursor.fetchone()
                 if not category:
                     flash("Category not found.", "danger")
-        except Exception as e:
-            flash(f"An error occurred: {e}", "danger")
-        finally:
-            connection.close()
-
+                    return redirect(url_for("main.categories"))
+    except pymysql.err.IntegrityError:
+        connection.rollback()
+        flash("Another category with this name already exists.", "danger")
+    except Exception as e:
+        connection.rollback()
+        flash(f"An error occurred: {e}", "danger")
+    finally:
+        connection.close()
     return redirect(url_for("main.categories"))
 
 
@@ -1305,7 +1298,7 @@ def delete_category(cate_id):
     if request.method == "POST":
         connection = get_db_connection()
         try:
-            with connection.cursor() as cursor:
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                 # for "log_user_activity"
                 cursor.execute(
                     "SELECT category_name FROM categories WHERE c_id = %s", (cate_id,)
@@ -1315,9 +1308,16 @@ def delete_category(cate_id):
                 cursor.execute("DELETE FROM categories WHERE c_id = %s", (cate_id,))
             connection.commit()
 
-            # if category:
-            # admin_activities(...)
-
+            if category:
+                log_user_activity(
+                    session.get("admin_id") or session.get("subadmin_id"),
+                    session.get("admin_name") or session.get("subadmin_name"),
+                    session.get("user_type"),
+                    'Delete',
+                    'App/Master Entries/Categories',
+                    f"Deleted Category '{category['category_name']}' with Category ID '{cate_id}'"
+                )
+            
             flash("Category and all its sub-categories have been deleted.", "success")
         except Exception as e:
             connection.rollback()
@@ -1325,7 +1325,6 @@ def delete_category(cate_id):
         finally:
             connection.close()
     return redirect(url_for("main.categories"))
-
 
 # # ---------------------------------------------------------------------
 # # Master: Sub-Categories
@@ -1336,36 +1335,34 @@ def delete_category(cate_id):
 @adm_login_required
 @subadmin_permission_required("SUB_CATEGORIES.view_sub_categories")
 def subCategories():
+    connection = get_db_connection()
     all_categories = []
     all_subcategories = []
-    connection = get_db_connection()
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT c_id , category_name FROM categories ORDER BY c_id ASC"
-            )
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("SELECT c_id , category_name FROM categories ORDER BY c_id ASC")
             all_categories = cursor.fetchall()
+            
             sub_sql_com = """
                 SELECT
                     sc.sc_id,
                     c.category_name AS category_name,
                     sc.sub_category_name,
                     DATE_FORMAT(sc.sc_created_at, '%d-%m-%Y %r') AS sc_created_at
-                FROM 
+                FROM  
                     sub_categories sc
-                INNER JOIN 
+                INNER JOIN  
                     categories c ON sc.category_id = c.c_id
-                ORDER BY 
-                    sc.sc_id ASC 
+                ORDER BY  
+                    sc.sc_id ASC  
             """
             cursor.execute(sub_sql_com)
             all_subcategories = cursor.fetchall()
     except Exception as e:
-        current_app.logger.error(f"Error fetching sub-categories data: {e}")
-        flash("An error occurred while fetching data.", "danger")
+        current_app.logger.error(f"Error fetching sub-categories: {e}")
+        flash("An error occurred while fetching sub-categories.", "danger")
     finally:
         connection.close()
-
     return render_template(
         "subCategories.html",
         all_categories=all_categories,
@@ -1383,17 +1380,30 @@ def add_sub_category():
     if not category_id or not sub_category_name:
         flash("Both category and sub-category name are required.", "danger")
         return redirect(url_for("main.subCategories"))
-
+    
     connection = get_db_connection()
     try:
-        with connection.cursor() as cursor:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute(
+                "SELECT category_name FROM categories WHERE c_id = %s", (category_id,)
+            )
+            category_data = cursor.fetchone()
+            category_name = category_data["category_name"] if category_data else "Unknown"
+            
             cursor.execute(
                 "INSERT INTO sub_categories (category_id, sub_category_name) VALUES (%s, %s)",
                 (category_id, sub_category_name),
             )
         connection.commit()
 
-        # admin_activities(...)
+        log_user_activity(
+            session.get("admin_id") or session.get("subadmin_id"),
+            session.get("admin_name") or session.get("subadmin_name"),
+            session.get("user_type"),
+            'Create',
+            'App/Master Entries/Sub Categories',
+            f"Created New Sub Category Called '{sub_category_name}' with Category name '{category_name}' Category ID '{category_id}'"
+        )
 
         flash("Sub-category added successfully!", "success")
     except ValueError:
@@ -1420,35 +1430,46 @@ def add_sub_category():
 @adm_login_required
 @subadmin_permission_required("SUB_CATEGORIES.edit_sub_category")
 def edit_sub_category(sub_cat_id):
-    if request.method == "POST":
-        new_name = request.form.get("subCategoryName")
-        if not new_name:
-            flash("Sub Category name cannot be empty.", "danger")
-            return redirect(url_for("main.subCategories"))
+    connection = get_db_connection()
+    try:
+        if request.method == "POST":
+            new_name = request.form.get("subCategoryName")
+            if not new_name:
+                flash("Sub Category name cannot be empty.", "danger")
+                return redirect(url_for("main.subCategories"))
+            
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+                cursor.execute(
+                    "SELECT sub_category_name FROM sub_categories WHERE sc_id = %s", (sub_cat_id,)
+                )
+                old_sub_cat = cursor.fetchone()
 
-        connection = get_db_connection()
-        try:
-            with connection.cursor() as cursor:
                 cursor.execute(
                     "UPDATE sub_categories SET sub_category_name = %s WHERE sc_id = %s",
                     (new_name, sub_cat_id),
                 )
             connection.commit()
 
-            # admin_activities(...)
+            if old_sub_cat:
+                log_user_activity(
+                    session.get("admin_id") or session.get("subadmin_id"),
+                    session.get("admin_name") or session.get("subadmin_name"),
+                    session.get("user_type"),
+                    'Edit',
+                    'App/Master Entries/Sub Categories',
+                    f"Edited Sub category from '{old_sub_cat['sub_category_name']}' to '{new_name}' with Sub Category ID = '{sub_cat_id}'"
+                )
 
             flash("Sub Category updated successfully!", "success")
-        except pymysql.err.IntegrityError:
-            connection.rollback()
-            flash("Another Sub Category with this name already exists.", "danger")
-        except Exception as e:
-            connection.rollback()
-            flash(f"An error occurred: {e}", "danger")
-        finally:
-            connection.close()
-
-    # The GET request in the original file had no template rendering, only a redirect.
-    # Preserving this behavior.
+    
+    except pymysql.err.IntegrityError:
+        connection.rollback()
+        flash("Another Sub Category with this name already exists.", "danger")
+    except Exception as e:
+        connection.rollback()
+        flash(f"An error occurred: {e}", "danger")
+    finally:
+        connection.close()
     return redirect(url_for("main.subCategories"))
 
 
@@ -1459,7 +1480,7 @@ def delete_sub_category(sub_cat_id):
     if request.method == "POST":
         connection = get_db_connection()
         try:
-            with connection.cursor() as cursor:
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                 # for "log_user_activity"
                 cursor.execute(
                     "SELECT sub_category_name FROM sub_categories WHERE sc_id = %s",
@@ -1467,13 +1488,18 @@ def delete_sub_category(sub_cat_id):
                 )
                 sub_category = cursor.fetchone()
 
-                cursor.execute(
-                    "DELETE FROM sub_categories WHERE sc_id = %s", (sub_cat_id,)
-                )
+                cursor.execute("DELETE FROM sub_categories WHERE sc_id = %s", (sub_cat_id,))
             connection.commit()
 
-            # if sub_category:
-            #     admin_activities(...)
+            if sub_category:
+                log_user_activity(
+                    session.get("admin_id") or session.get("subadmin_id"),
+                    session.get("admin_name") or session.get("subadmin_name"),
+                    session.get("user_type"),
+                    'Delete',
+                    'App/Master Entries/Sub Categories',
+                    f"Deleted Sub Category '{sub_category['sub_category_name']}' with Sub Category ID '{sub_cat_id}'"
+                )
 
             flash("Sub Categories have been deleted.", "success")
         except Exception as e:
@@ -1482,7 +1508,6 @@ def delete_sub_category(sub_cat_id):
         finally:
             connection.close()
     return redirect(url_for("main.subCategories"))
-
 
 # # ---------------------------------------------------------------------
 # # Master: Tags
@@ -1493,10 +1518,10 @@ def delete_sub_category(sub_cat_id):
 @adm_login_required
 @subadmin_permission_required("TAGS.view_tags")
 def tags():
-    all_tags = []
     connection = get_db_connection()
+    all_tags = []
     try:
-        with connection.cursor() as cursor:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute(
                 "SELECT t_id , tag_name, DATE_FORMAT(t_created_at, '%d-%m-%Y %r') as t_created_at FROM tags ORDER BY t_id ASC"
             )
@@ -1517,15 +1542,22 @@ def add_tag():
     if not tag_name:
         flash("Tag name cannot be empty.", "danger")
         return redirect(url_for("main.tags"))
-
+    
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
             cursor.execute("INSERT INTO tags (tag_name) VALUES (%s)", (tag_name,))
         connection.commit()
-
-        # admin_activities(...)
-
+        
+        log_user_activity(
+            session.get("admin_id") or session.get("subadmin_id"),
+            session.get("admin_name") or session.get("subadmin_name"),
+            session.get("user_type"),
+            'Create',
+            'App/Master Entries/Tags',
+            f"Created New Tag Called '{tag_name}'"
+        )
+        
         flash("Tag added successfully!", "success")
     except pymysql.err.IntegrityError:
         connection.rollback()
@@ -1542,33 +1574,45 @@ def add_tag():
 @adm_login_required
 @subadmin_permission_required("TAGS.edit_tag")
 def edit_tag(tag_id):
-    if request.method == "POST":
-        new_name = request.form.get("tagName")
-        if not new_name:
-            flash("Tag name cannot be empty.", "danger")
-            return redirect(url_for("main.tags"))
+    connection = get_db_connection()
+    try:
+        if request.method == "POST":
+            new_name = request.form.get("tagName")
+            if not new_name:
+                flash("Tag name cannot be empty.", "danger")
+                return redirect(url_for("main.tags"))
+            
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+                cursor.execute(
+                    "SELECT tag_name FROM tags WHERE t_id = %s", (tag_id,)
+                )
+                old_tag = cursor.fetchone()
 
-        connection = get_db_connection()
-        try:
-            with connection.cursor() as cursor:
                 cursor.execute(
                     "UPDATE tags SET tag_name = %s WHERE t_id = %s", (new_name, tag_id)
                 )
             connection.commit()
-
-            # admin_activities(...)
-
+            
+            if old_tag:
+                log_user_activity(
+                    session.get("admin_id") or session.get("subadmin_id"),
+                    session.get("admin_name") or session.get("subadmin_name"),
+                    session.get("user_type"),
+                    'Edit',
+                    'App/Master Entries/Tags',
+                    f"Edited Tag from '{old_tag['tag_name']}' to '{new_name}' where Tag ID = '{tag_id}'"
+                )
+            
             flash("Tag updated successfully!", "success")
-        except pymysql.err.IntegrityError:
-            connection.rollback()
-            flash("Another Tag with this name already exists.", "danger")
-        except Exception as e:
-            connection.rollback()
-            flash(f"An error occurred: {e}", "danger")
-        finally:
-            connection.close()
-
-    # Original code had no GET logic other than redirecting
+        
+    except pymysql.err.IntegrityError:
+        connection.rollback()
+        flash("Another Tag with this name already exists.", "danger")
+    except Exception as e:
+        connection.rollback()
+        flash(f"An error occurred: {e}", "danger")
+    finally:
+        connection.close()
     return redirect(url_for("main.tags"))
 
 
@@ -1579,16 +1623,23 @@ def delete_tag(tag_id):
     if request.method == "POST":
         connection = get_db_connection()
         try:
-            with connection.cursor() as cursor:
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                 cursor.execute("SELECT tag_name FROM tags WHERE t_id = %s", (tag_id,))
                 tag = cursor.fetchone()
 
                 cursor.execute("DELETE FROM tags WHERE t_id = %s", (tag_id,))
             connection.commit()
 
-            # if tag:
-            #     admin_activities(...)
-
+            if tag:
+                log_user_activity(
+                    session.get("admin_id") or session.get("subadmin_id"),
+                    session.get("admin_name") or session.get("subadmin_name"),
+                    session.get("user_type"),
+                    'Delete',
+                    'App/Master Entries/Tags',
+                    f"Deleted Tag '{tag['tag_name']}' with Tag ID '{tag_id}'"
+                )
+            
             flash("Tag has been deleted.", "success")
         except Exception as e:
             connection.rollback()
@@ -1596,7 +1647,6 @@ def delete_tag(tag_id):
         finally:
             connection.close()
     return redirect(url_for("main.tags"))
-
 
 # # ---------------------------------------------------------------------
 # # Document Routes
@@ -1632,11 +1682,9 @@ def addNewDocuments():
                 filepath = os.path.join(
                     current_app.config["UPLOAD_FOLDER"], unique_filename
                 )
-
-                # Save temporarily for local processing (OCR/Azure)
                 file.save(filepath)
 
-                # Store temporary path and original name for the final submission step
+                # Store the filepath and original filename in the session for final submission
                 session["processing_filepath"] = filepath
                 session["processing_filename"] = original_filename
                 session["form_data_for_submission"] = dict(form_data)
@@ -1652,16 +1700,16 @@ def addNewDocuments():
                 if not raw_text.strip():
                     os.remove(filepath)
                     session.pop("processing_filepath", None)
-                    return (
-                        jsonify(
-                            {
-                                "error": "OCR failed to extract any text from the document."
-                            }
-                        ),
-                        400,
-                    )
+                    return jsonify({"error": "OCR failed to extract any text from the document."}), 400
 
-                # admin_activities(...)
+                log_user_activity(
+                    session.get("admin_id") or session.get("subadmin_id"),
+                    session.get("admin_name") or session.get("subadmin_name"),
+                    session.get("user_type"),
+                    "File Upload",
+                    "Documents/Add New",
+                    f"Uploaded document '{original_filename}' for analysis."
+                )
 
                 analysis_result = analyze_document_with_openai(raw_text)
                 return jsonify(
@@ -1680,12 +1728,7 @@ def addNewDocuments():
             if filepath and os.path.exists(filepath):
                 os.remove(filepath)
             current_app.logger.error(f"An unexpected error occurred: {e}")
-            return (
-                jsonify(
-                    {"error": "An internal error occurred. Please try again later."}
-                ),
-                500,
-            )
+            return jsonify({"error": "An internal error occurred. Please try again later."}), 500
 
     return render_template("addNewDocuments.html")
 
@@ -1694,19 +1737,14 @@ def addNewDocuments():
 @adm_login_required
 def submitDocument():
     """
-    Handles final submission: uploads file to S3, saves record to DB, cleans up.
+    Handles the final submission after the user has reviewed and edited the extracted data.
     """
     filepath = session.get("processing_filepath")
     form_data = session.get("form_data_for_submission")
     original_filename = session.get("processing_filename")
 
-    if not filepath or not form_data or not original_filename:
-        return (
-            jsonify(
-                {"error": "Analysis data not found. Please re-analyze the document."}
-            ),
-            400,
-        )
+    if not filepath or not form_data:
+        return jsonify({"error": "Analysis data not found. Please re-analyze the document."}), 400
 
     edited_data_json_str = request.form.get("extracted_data")
     if not edited_data_json_str:
@@ -1721,9 +1759,11 @@ def submitDocument():
     try:
         file_url = None
         # Use the file from the session's temporary path for S3 upload
-        with open(filepath, "rb") as f:
-            # Boto3's upload_fileobj needs a filename attribute
-            f.filename = original_filename
+        with open(filepath, 'rb') as f:
+            # We need to create a temporary file-like object for boto3
+            # or pass the file stream with the correct filename.
+            # boto3's upload_fileobj needs a filename, so we'll simulate it.
+            f.name = original_filename
             file_url = upload_file_to_s3(f, current_app.config.get("AWS_S3_BUCKET"))
 
         if not file_url:
@@ -1739,32 +1779,36 @@ def submitDocument():
                 form_data.get("category"),
                 form_data.get("sub_category"),
                 form_data.get("tags"),
-                file_url,  # Use the S3 URL
+                file_url,
                 edited_data_json_str,
             )
             cursor.execute(sql, params)
         connection.commit()
 
-        # admin_activities(...)
-
-        return jsonify({"message": "Document and extracted data saved successfully!"})
-
-    except Exception as e:
-        connection.rollback()
-        current_app.logger.error(f"An unexpected error during submission: {e}")
-        return (
-            jsonify(
-                {"error": f"An internal error occurred during submission: {str(e)}"}
-            ),
-            500,
+        log_user_activity(
+            session.get("admin_id") or session.get("subadmin_id"),
+            session.get("admin_name") or session.get("subadmin_name"),
+            session.get("user_type"),
+            "Create",
+            "Documents/Submit",
+            f"Saved new document '{form_data.get('title')}' with S3 URL: {file_url}"
         )
-    finally:
-        # Clean up the local temporary file and session data
-        if filepath and os.path.exists(filepath):
-            os.remove(filepath)
+
+        # Clean up the local temporary file
+        os.remove(filepath)
         session.pop("processing_filepath", None)
         session.pop("form_data_for_submission", None)
         session.pop("processing_filename", None)
+
+        return jsonify({"message": "Document and extracted data saved successfully!"})
+    except Exception as e:
+        connection.rollback()
+        current_app.logger.error(f"An unexpected error occurred during submission: {e}")
+        # Attempt to clean up the temp file even on error
+        if filepath and os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({"error": f"An internal error occurred during submission: {str(e)}"}), 500
+    finally:
         connection.close()
 
 
@@ -1777,16 +1821,14 @@ def documentList():
     sub_category_filter = request.args.get("sub_category", "")
     tags_filter = request.args.get("tags", "")
 
-    documents, distinct_categories, distinct_sub_categories, distinct_tags = (
-        [],
-        [],
-        [],
-        [],
-    )
     connection = get_db_connection()
+    documents = []
+    distinct_categories = []
+    distinct_sub_categories = []
+    distinct_tags = []
     try:
-        with connection.cursor() as cursor:
-            base_sql = "SELECT id, title, category, sub_category, tags, description, file_path, DATE_FORMAT(created_at, '%%d-%%m-%%Y %%r') as formatted_date FROM documents"
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            base_sql = "SELECT id, title, category, sub_category, tags, description, file_path, DATE_FORMAT(created_at, '%d-%m-%Y %r') as formatted_date FROM documents"
             conditions, params = [], []
 
             if search_query:
@@ -1851,18 +1893,18 @@ def documentList():
 @subadmin_permission_required("DOCUMENTS.edit_document")
 def editDocument(doc_id):
     connection = get_db_connection()
+    doc = None
     try:
         if request.method == "POST":
             form_data = request.form
             title = form_data.get("title")
             if not title:
                 flash("Title is a required field.", "error")
-                # Need to fetch doc again to render template on error
-                with connection.cursor() as cursor:
+                with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                     cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
                     doc = cursor.fetchone()
                 return render_template("editDocument.html", doc=doc)
-
+            
             with connection.cursor() as cursor:
                 sql = """
                     UPDATE documents
@@ -1879,10 +1921,20 @@ def editDocument(doc_id):
                 )
                 cursor.execute(sql, params)
             connection.commit()
+
+            log_user_activity(
+                session.get("admin_id") or session.get("subadmin_id"),
+                session.get("admin_name") or session.get("subadmin_name"),
+                session.get("user_type"),
+                "Edit",
+                "Documents/Edit",
+                f"Edited document '{title}' with ID: {doc_id}"
+            )
+
             flash("Document updated successfully!", "success")
             return redirect(url_for("main.documentList"))
-        else:  # GET request
-            with connection.cursor() as cursor:
+        else:
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                 cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
                 doc = cursor.fetchone()
                 if not doc:
@@ -1891,10 +1943,11 @@ def editDocument(doc_id):
             return render_template("editDocument.html", doc=doc)
     except Exception as e:
         connection.rollback()
-        flash(f"An error occurred: {e}", "danger")
-        return redirect(url_for("main.documentList"))
+        current_app.logger.error(f"An unexpected error occurred: {e}")
+        flash("An error occurred while editing the document.", "danger")
     finally:
         connection.close()
+    return redirect(url_for("main.documentList"))
 
 
 @main.route("/documents/delete/<int:doc_id>", methods=["POST"])
@@ -1902,28 +1955,34 @@ def editDocument(doc_id):
 @subadmin_permission_required("DOCUMENTS.delete_document")
 def deleteDocument(doc_id):
     connection = get_db_connection()
+    file_path = None
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT file_path, title FROM documents WHERE id = %s", (doc_id,)
-            )
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("SELECT file_path FROM documents WHERE id = %s", (doc_id,))
             doc = cursor.fetchone()
+
             if not doc:
                 flash("Document not found.", "error")
                 return redirect(url_for("main.documentList"))
-
+            
             file_path = doc.get("file_path")
-
-            # 1. Delete file from S3 first
-            if file_path:
-                file_key = file_path.split("/")[-1]  # Extract filename/key from URL
-                delete_file_from_s3(file_key, current_app.config.get("AWS_S3_BUCKET"))
-
-            # 2. Delete record from database
+            
             cursor.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
         connection.commit()
 
-        # admin_activities(...)
+        # Extract the key (filename) from the S3 URL
+        if file_path:
+            file_key = file_path.split("/")[-1]
+            delete_file_from_s3(file_key, current_app.config.get("AWS_S3_BUCKET"))
+
+        log_user_activity(
+            session.get("admin_id") or session.get("subadmin_id"),
+            session.get("admin_name") or session.get("subadmin_name"),
+            session.get("user_type"),
+            "Delete",
+            "Documents/Delete",
+            f"Deleted document with ID: {doc_id}"
+        )
 
         flash("Document deleted successfully!", "success")
     except Exception as e:
@@ -1946,20 +2005,21 @@ def usersRoles():
     """
     Displays a list of all roles. This is the main roles page.
     """
-    all_roles = []
     connection = get_db_connection()
+    all_roles = []
     try:
-        with connection.cursor() as cursor:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute(
-                "SELECT r_id, role_name, permissions, DATE_FORMAT(r_created_at, '%d-%m-%Y %H:%i:%s') AS r_created_at FROM subadminroles ORDER BY r_created_at ASC"
+                "SELECT r_id, role_name, permissions, DATE_FORMAT(r_created_at, '%d-%m-%Y %r') AS r_created_at FROM subadminroles ORDER BY r_created_at ASC"
             )
             all_roles = cursor.fetchall()
+        return render_template("usersRoles.html", all_roles=all_roles)
     except Exception as e:
         current_app.logger.error(f"Error fetching roles: {e}")
         flash("An error occurred while fetching roles.", "danger")
+        return render_template("usersRoles.html", all_roles=[])
     finally:
         connection.close()
-    return render_template("usersRoles.html", all_roles=all_roles)
 
 
 @main.route("/users/roles/create", methods=["GET", "POST"])
@@ -2015,20 +2075,30 @@ def createRole():
                 "delete_users": request.form.get("delete_users", "No"),
             },
             "USER_ACTIVITIES": {
-                "view_user_activities": request.form.get("view_user_activities", "No")
+                "view_user_activities": request.form.get("view_user_activities", "No"),
             },
-            "DASHBOARDS": {"view_dashboard": request.form.get("view_dashboard", "No")},
+            "DASHBOARDS": {
+                "view_dashboard": request.form.get("view_dashboard", "No"),
+            },
         }
         permissions_json = json.dumps(permissions)
 
         connection = get_db_connection()
         try:
             with connection.cursor() as cursor:
-                sql = (
-                    "INSERT INTO subadminroles (role_name, permissions) VALUES (%s, %s)"
-                )
+                sql = "INSERT INTO subadminroles (role_name, permissions) VALUES (%s, %s)"
                 cursor.execute(sql, (role_name, permissions_json))
             connection.commit()
+
+            log_user_activity(
+                session.get("admin_id") or session.get("subadmin_id"),
+                session.get("admin_name") or session.get("subadmin_name"),
+                session.get("user_type"),
+                "Create",
+                "Users/Roles",
+                f"Created new role '{role_name}'"
+            )
+
             flash(f'Role "{role_name}" created successfully!', "success")
             return redirect(url_for("main.usersRoles"))
         except pymysql.err.IntegrityError:
@@ -2039,6 +2109,7 @@ def createRole():
             connection.rollback()
             current_app.logger.error(f"Error creating role: {e}")
             flash("An error occurred while creating the role.", "danger")
+            return redirect(url_for("main.createRole"))
         finally:
             connection.close()
 
@@ -2066,16 +2137,10 @@ def editRole(role_id):
                     "delete_category": request.form.get("delete_category", "No"),
                 },
                 "SUB_CATEGORIES": {
-                    "view_sub_categories": request.form.get(
-                        "view_sub_categories", "No"
-                    ),
-                    "create_sub_category": request.form.get(
-                        "create_sub_category", "No"
-                    ),
+                    "view_sub_categories": request.form.get("view_sub_categories", "No"),
+                    "create_sub_category": request.form.get("create_sub_category", "No"),
                     "edit_sub_category": request.form.get("edit_sub_category", "No"),
-                    "delete_sub_category": request.form.get(
-                        "delete_sub_category", "No"
-                    ),
+                    "delete_sub_category": request.form.get("delete_sub_category", "No"),
                 },
                 "TAGS": {
                     "view_tags": request.form.get("view_tags", "No"),
@@ -2102,12 +2167,10 @@ def editRole(role_id):
                     "delete_users": request.form.get("delete_users", "No"),
                 },
                 "USER_ACTIVITIES": {
-                    "view_user_activities": request.form.get(
-                        "view_user_activities", "No"
-                    )
+                    "view_user_activities": request.form.get("view_user_activities", "No"),
                 },
                 "DASHBOARDS": {
-                    "view_dashboard": request.form.get("view_dashboard", "No")
+                    "view_dashboard": request.form.get("view_dashboard", "No"),
                 },
             }
             permissions_json = json.dumps(permissions)
@@ -2115,12 +2178,23 @@ def editRole(role_id):
             with connection.cursor() as cursor:
                 update_sql = "UPDATE subadminroles SET role_name = %s, permissions = %s WHERE r_id = %s"
                 cursor.execute(update_sql, (role_name, permissions_json, role_id))
+
             connection.commit()
+
+            log_user_activity(
+                session.get("admin_id") or session.get("subadmin_id"),
+                session.get("admin_name") or session.get("subadmin_name"),
+                session.get("user_type"),
+                "Edit",
+                "Users/Roles",
+                f"Edited role '{role_name}' with ID: {role_id}"
+            )
+
             flash(f'Role "{role_name}" updated successfully!', "success")
             return redirect(url_for("main.usersRoles"))
 
-        else:  # GET request
-            with connection.cursor() as cursor:
+        else: # GET request
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                 cursor.execute(
                     "SELECT r_id, role_name, permissions FROM subadminroles WHERE r_id = %s",
                     (role_id,),
@@ -2146,14 +2220,14 @@ def editRole(role_id):
 @subadmin_permission_required("ROLES.delete_role")
 def deleteRole(role_id):
     """
-    Deletes a role. Prevents deletion if the role is assigned to any user.
+    Deletes a role.
+    Prevents deletion if the role is assigned to any user.
     """
     connection = get_db_connection()
     try:
-        with connection.cursor() as cursor:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute(
-                "SELECT COUNT(*) as user_count FROM subadmin WHERE role_id = %s",
-                (role_id,),
+                "SELECT COUNT(*) as user_count FROM subadmin WHERE role_id = %s", (role_id,)
             )
             result = cursor.fetchone()
 
@@ -2172,12 +2246,23 @@ def deleteRole(role_id):
 
             cursor.execute("DELETE FROM subadminroles WHERE r_id = %s", (role_id,))
         connection.commit()
+
+        log_user_activity(
+            session.get("admin_id") or session.get("subadmin_id"),
+            session.get("admin_name") or session.get("subadmin_name"),
+            session.get("user_type"),
+            "Delete",
+            "Users/Roles",
+            f"Deleted role '{role_name}' with ID: {role_id}"
+        )
+
         flash(f'Role "{role_name}" has been deleted.', "success")
 
     except Exception as e:
         connection.rollback()
         current_app.logger.error(f"Error deleting role {role_id}: {e}")
         flash("An error occurred while deleting the role.", "danger")
+
     finally:
         connection.close()
 
@@ -2196,27 +2281,110 @@ def userList():
     """
     Displays a list of all users with their assigned roles.
     """
-    all_users = []
     connection = get_db_connection()
+    all_users = []
     try:
-        with connection.cursor() as cursor:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
             sql = """
-               SELECT s.subadmin_id, s.subadmin_name, s.subadmin_email, s.subadmin_username,
-               COALESCE(r.role_name, 'No Role') AS role_name,
-               DATE_FORMAT(s.u_created_at, '%d-%m-%Y %H:%i:%s') AS u_created_at
-               FROM subadmin s
-               LEFT JOIN subadminroles r ON s.role_id = r.r_id
-               ORDER BY s.u_created_at ASC
+                SELECT s.subadmin_id, s.subadmin_name, s.subadmin_email, s.subadmin_username,
+                COALESCE(r.role_name, 'No Role') AS role_name,
+                DATE_FORMAT(s.u_created_at, '%d-%m-%Y %r') AS u_created_at
+                FROM subadmin s
+                LEFT JOIN subadminroles r ON s.role_id = r.r_id
+                ORDER BY s.u_created_at ASC
             """
             cursor.execute(sql)
             all_users = cursor.fetchall()
+        return render_template("usersList.html", all_users=all_users)
     except Exception as e:
         current_app.logger.error(f"Error fetching users: {e}")
         flash("An error occurred while fetching users.", "danger")
+        return render_template("usersList.html", all_users=[])
     finally:
         connection.close()
-    return render_template("usersList.html", all_users=all_users)
 
+
+# @main.route("/users/create", methods=["GET", "POST"])
+# @adm_login_required
+# @subadmin_permission_required("USERS.create_users")
+# def createUser():
+#     """
+#     Handles the creation of a new user.
+#     """
+#     connection = get_db_connection()
+    
+#     try:
+#         if request.method == "POST":
+#             name = request.form.get("name")
+#             email = request.form.get("email")
+#             username = request.form.get("username")
+#             password = request.form.get("password")
+#             confirm_password = request.form.get("confirm_password")
+#             role_id = request.form.get("role_id")
+#             role_name = request.form.get("role_name")
+
+#             if not all([name, email, username, password, confirm_password, role_id]):
+#                 flash("All fields are required.", "danger")
+#                 return redirect(url_for("main.createUser"))
+
+#             if password != confirm_password:
+#                 flash("Passwords do not match.", "danger")
+#                 return redirect(url_for("main.createUser"))
+
+#             hashed_password = bcrypt.hashpw(
+#                 password.encode("utf-8"), bcrypt.gensalt()
+#             ).decode("utf-8")
+            
+#             with connection.cursor() as cursor:
+#                 cursor.execute("SELECT * FROM superadmin WHERE superadmin_email=%s", (email,))
+#                 if cursor.fetchone():
+#                     flash(f'Email "{email}" already exist in super admin portal . Please choose another.')
+                
+#                 cursor.execute("SELECT * FROM admin WHERE admin_email=%s", (email,))
+#                 if cursor.fetchone():
+#                     flash(f'Email "{email}" already exist in admin portal . Please choose another.')
+
+#             with connection.cursor() as cursor:
+#                 sql = "INSERT INTO subadmin (subadmin_name, subadmin_email, subadmin_username, subadmin_password, role_id) VALUES (%s, %s, %s, %s, %s)"
+#                 cursor.execute(sql, (name, email, username, hashed_password, role_id))
+#             connection.commit()
+
+#             log_user_activity(
+#                 session.get("admin_id") or session.get("subadmin_id"),
+#                 session.get("admin_name") or session.get("subadmin_name"),
+#                 session.get("user_type"),
+#                 "Create",
+#                 "Users/User Management",
+#                 f"Created new user '{name}' with email '{email}' and role_id '{role_id}'"
+#             )
+
+#             flash(f'User "{name}" created successfully!', "success")
+#             return redirect(url_for("main.userList"))
+
+#         # For GET request, fetch roles to populate the dropdown
+#         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+#             cursor.execute(
+#                 "SELECT r_id, role_name FROM subadminroles ORDER BY role_name ASC"
+#             )
+#             all_roles = cursor.fetchall()
+#         return render_template("create_edit_user.html", user=None, all_roles=all_roles)
+
+#     except pymysql.err.IntegrityError as e:
+#         connection.rollback()
+#         if "email" in str(e).lower():
+#             flash(f'An account with the email "{email}" already exists.', "danger")
+#         elif "username" in str(e).lower():
+#             flash(f'An account with the username "{username}" already exists.', "danger")
+#         else:
+#             flash("A database error occurred. The username or email might already be taken.", "danger")
+#         return redirect(url_for("main.createUser"))
+#     except Exception as e:
+#         connection.rollback()
+#         current_app.logger.error(f"Error creating user: {e}")
+#         flash("An error occurred while creating the user.", "danger")
+#         return redirect(url_for("main.createUser"))
+#     finally:
+#         connection.close()
 
 @main.route("/users/create", methods=["GET", "POST"])
 @adm_login_required
@@ -2226,6 +2394,7 @@ def createUser():
     Handles the creation of a new user.
     """
     connection = get_db_connection()
+    
     try:
         if request.method == "POST":
             name = request.form.get("name")
@@ -2243,22 +2412,56 @@ def createUser():
                 flash("Passwords do not match.", "danger")
                 return redirect(url_for("main.createUser"))
 
+            # Check email uniqueness across ALL user tables
+            with connection.cursor() as cursor:
+                # Check superadmin table
+                cursor.execute("SELECT superadmin_email FROM superadmin WHERE superadmin_email=%s", (email,))
+                if cursor.fetchone():
+                    flash(f'Email "{email}" already exists in super admin portal. Please choose another.', "danger")
+                    return redirect(url_for("main.createUser"))
+                
+                # Check admin table
+                cursor.execute("SELECT admin_email FROM admin WHERE admin_email=%s", (email,))
+                if cursor.fetchone():
+                    flash(f'Email "{email}" already exists in admin portal. Please choose another.', "danger")
+                    return redirect(url_for("main.createUser"))
+                
+                # Check subadmin table (the table we're inserting into)
+                cursor.execute("SELECT subadmin_email FROM subadmin WHERE subadmin_email=%s", (email,))
+                if cursor.fetchone():
+                    flash(f'Email "{email}" already exists in subadmin portal. Please choose another.', "danger")
+                    return redirect(url_for("main.createUser"))
+                
+                # Check username uniqueness in subadmin table
+                cursor.execute("SELECT subadmin_username FROM subadmin WHERE subadmin_username=%s", (username,))
+                if cursor.fetchone():
+                    flash(f'Username "{username}" is already taken. Please choose another.', "danger")
+                    return redirect(url_for("main.createUser"))
+
             hashed_password = bcrypt.hashpw(
                 password.encode("utf-8"), bcrypt.gensalt()
             ).decode("utf-8")
-
+            
+            # Insert the new user
             with connection.cursor() as cursor:
                 sql = "INSERT INTO subadmin (subadmin_name, subadmin_email, subadmin_username, subadmin_password, role_id) VALUES (%s, %s, %s, %s, %s)"
                 cursor.execute(sql, (name, email, username, hashed_password, role_id))
             connection.commit()
 
-            # admin_activities(...)
+            log_user_activity(
+                session.get("admin_id") or session.get("subadmin_id"),
+                session.get("admin_name") or session.get("subadmin_name"),
+                session.get("user_type"),
+                "Create",
+                "Users/User Management",
+                f"Created new user '{name}' with email '{email}' and role_id '{role_id}'"
+            )
 
             flash(f'User "{name}" created successfully!', "success")
             return redirect(url_for("main.userList"))
 
         # For GET request, fetch roles to populate the dropdown
-        with connection.cursor() as cursor:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute(
                 "SELECT r_id, role_name FROM subadminroles ORDER BY role_name ASC"
             )
@@ -2267,19 +2470,12 @@ def createUser():
 
     except pymysql.err.IntegrityError as e:
         connection.rollback()
-        email = request.form.get("email")  # Re-fetch for flash message
-        username = request.form.get("username")  # Re-fetch for flash message
         if "email" in str(e).lower():
             flash(f'An account with the email "{email}" already exists.', "danger")
         elif "username" in str(e).lower():
-            flash(
-                f'An account with the username "{username}" already exists.', "danger"
-            )
+            flash(f'An account with the username "{username}" already exists.', "danger")
         else:
-            flash(
-                "A database error occurred. The username or email might already be taken.",
-                "danger",
-            )
+            flash("A database error occurred. The username or email might already be taken.", "danger")
         return redirect(url_for("main.createUser"))
     except Exception as e:
         connection.rollback()
@@ -2289,6 +2485,78 @@ def createUser():
     finally:
         connection.close()
 
+
+# @main.route("/users/edit/<int:user_id>", methods=["GET", "POST"])
+# @adm_login_required
+# @subadmin_permission_required("USERS.edit_users")
+# def editUser(user_id):
+#     """
+#     Handles editing an existing user.
+#     """
+#     connection = get_db_connection()
+#     try:
+#         if request.method == "POST":
+#             name = request.form.get("name")
+#             email = request.form.get("email")
+#             username = request.form.get("username")
+#             password = request.form.get("password")
+#             confirm_password = request.form.get("confirm_password")
+#             role_id = request.form.get("role_id")
+
+#             with connection.cursor() as cursor:
+#                 if password:
+#                     if password != confirm_password:
+#                         flash("New passwords do not match.", "danger")
+#                         return redirect(url_for("main.editUser", user_id=user_id))
+                        
+#                     hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+                    
+#                     sql = "UPDATE subadmin SET subadmin_name=%s, subadmin_email=%s, subadmin_username=%s, subadmin_password=%s, role_id=%s WHERE subadmin_id=%s"
+#                     cursor.execute(
+#                         sql, (name, email, username, hashed_password, role_id, user_id)
+#                     )
+#                 else:
+#                     sql = "UPDATE subadmin SET subadmin_name=%s, subadmin_email=%s, subadmin_username=%s, role_id=%s WHERE subadmin_id=%s"
+#                     cursor.execute(sql, (name, email, username, role_id, user_id))
+        
+#             connection.commit()
+            
+#             log_user_activity(
+#                 session.get("admin_id") or session.get("subadmin_id"),
+#                 session.get("admin_name") or session.get("subadmin_name"),
+#                 session.get("user_type"),
+#                 "Edit",
+#                 "Users/User Management",
+#                 f"Edited user '{name}' with ID: {user_id}"
+#             )
+            
+#             flash(f'User "{name}" updated successfully!', "success")
+#             return redirect(url_for("main.userList"))
+
+#         else: # GET request
+#             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+#                 cursor.execute("SELECT * FROM subadmin WHERE subadmin_id = %s", (user_id,))
+#                 user = cursor.fetchone()
+#                 if not user:
+#                     flash("User not found.", "danger")
+#                     return redirect(url_for("main.userList"))
+
+#                 cursor.execute("SELECT r_id, role_name FROM subadminroles ORDER BY role_name ASC")
+#                 all_roles = cursor.fetchall()
+                
+#             return render_template("create_edit_user.html", user=user, all_roles=all_roles)
+
+#     except pymysql.err.IntegrityError:
+#         connection.rollback()
+#         flash("That email or username is already in use by another account.", "danger")
+#         return redirect(url_for("main.editUser", user_id=user_id))
+#     except Exception as e:
+#         connection.rollback()
+#         current_app.logger.error(f"Error editing user {user_id}: {e}")
+#         flash("An error occurred while editing the user.", "danger")
+#         return redirect(url_for("main.userList"))
+#     finally:
+#         connection.close()
 
 @main.route("/users/edit/<int:user_id>", methods=["GET", "POST"])
 @adm_login_required
@@ -2307,15 +2575,46 @@ def editUser(user_id):
             confirm_password = request.form.get("confirm_password")
             role_id = request.form.get("role_id")
 
+            # Validate required fields
+            if not all([name, email, username, role_id]):
+                flash("All fields except password are required.", "danger")
+                return redirect(url_for("main.editUser", user_id=user_id))
+
+            if password and password != confirm_password:
+                flash("New passwords do not match.", "danger")
+                return redirect(url_for("main.editUser", user_id=user_id))
+
+            # Check email uniqueness across ALL user tables (excluding current user)
+            with connection.cursor() as cursor:
+                # Check superadmin table
+                cursor.execute("SELECT superadmin_email FROM superadmin WHERE superadmin_email=%s", (email,))
+                if cursor.fetchone():
+                    flash(f'Email "{email}" already exists in super admin portal. Please choose another.', "danger")
+                    return redirect(url_for("main.editUser", user_id=user_id))
+                
+                # Check admin table
+                cursor.execute("SELECT admin_email FROM admin WHERE admin_email=%s", (email,))
+                if cursor.fetchone():
+                    flash(f'Email "{email}" already exists in admin portal. Please choose another.', "danger")
+                    return redirect(url_for("main.editUser", user_id=user_id))
+                
+                # Check subadmin table (excluding current user)
+                cursor.execute("SELECT subadmin_id, subadmin_email FROM subadmin WHERE subadmin_email=%s AND subadmin_id != %s", (email, user_id))
+                if cursor.fetchone():
+                    flash(f'Email "{email}" already exists in subadmin portal. Please choose another.', "danger")
+                    return redirect(url_for("main.editUser", user_id=user_id))
+                
+                # Check username uniqueness in subadmin table (excluding current user)
+                cursor.execute("SELECT subadmin_id, subadmin_username FROM subadmin WHERE subadmin_username=%s AND subadmin_id != %s", (username, user_id))
+                if cursor.fetchone():
+                    flash(f'Username "{username}" is already taken. Please choose another.', "danger")
+                    return redirect(url_for("main.editUser", user_id=user_id))
+
+            # Update the user
             with connection.cursor() as cursor:
                 if password:
-                    if password != confirm_password:
-                        flash("New passwords do not match.", "danger")
-                        return redirect(url_for("main.editUser", user_id=user_id))
-
-                    hashed_password = bcrypt.hashpw(
-                        password.encode("utf-8"), bcrypt.gensalt()
-                    ).decode("utf-8")
+                    hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+                    
                     sql = "UPDATE subadmin SET subadmin_name=%s, subadmin_email=%s, subadmin_username=%s, subadmin_password=%s, role_id=%s WHERE subadmin_id=%s"
                     cursor.execute(
                         sql, (name, email, username, hashed_password, role_id, user_id)
@@ -2323,25 +2622,33 @@ def editUser(user_id):
                 else:
                     sql = "UPDATE subadmin SET subadmin_name=%s, subadmin_email=%s, subadmin_username=%s, role_id=%s WHERE subadmin_id=%s"
                     cursor.execute(sql, (name, email, username, role_id, user_id))
-
+        
             connection.commit()
+            
+            log_user_activity(
+                session.get("admin_id") or session.get("subadmin_id"),
+                session.get("admin_name") or session.get("subadmin_name"),
+                session.get("user_type"),
+                "Edit",
+                "Users/User Management",
+                f"Edited user '{name}' with ID: {user_id}"
+            )
+            
             flash(f'User "{name}" updated successfully!', "success")
             return redirect(url_for("main.userList"))
 
-        # For GET request
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM subadmin WHERE subadmin_id = %s", (user_id,))
-            user = cursor.fetchone()
-            if not user:
-                flash("User not found.", "danger")
-                return redirect(url_for("main.userList"))
+        else: # GET request
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+                cursor.execute("SELECT * FROM subadmin WHERE subadmin_id = %s", (user_id,))
+                user = cursor.fetchone()
+                if not user:
+                    flash("User not found.", "danger")
+                    return redirect(url_for("main.userList"))
 
-            cursor.execute(
-                "SELECT r_id, role_name FROM subadminroles ORDER BY role_name ASC"
-            )
-            all_roles = cursor.fetchall()
-
-        return render_template("create_edit_user.html", user=user, all_roles=all_roles)
+                cursor.execute("SELECT r_id, role_name FROM subadminroles ORDER BY role_name ASC")
+                all_roles = cursor.fetchall()
+                
+            return render_template("create_edit_user.html", user=user, all_roles=all_roles)
 
     except pymysql.err.IntegrityError:
         connection.rollback()
@@ -2356,48 +2663,130 @@ def editUser(user_id):
         connection.close()
 
 
+
 @main.route("/users/delete/<int:user_id>", methods=["POST"])
 @adm_login_required
 @subadmin_permission_required("USERS.delete_users")
 def deleteUser(user_id):
-    """
-    Deletes a user.
-    """
     connection = get_db_connection()
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT subadmin_name FROM subadmin WHERE subadmin_id = %s", (user_id,)
-            )
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("SELECT subadmin_username FROM subadmin WHERE subadmin_id = %s", (user_id,))
             subadmin = cursor.fetchone()
-            if not subadmin:
-                flash(f"User with ID {user_id} not found.", "warning")
-                return redirect(url_for("main.userList"))
-
+            
             cursor.execute("DELETE FROM subadmin WHERE subadmin_id = %s", (user_id,))
         connection.commit()
-
-        # admin_activities(...)
-
-        flash(
-            f"User '{subadmin['subadmin_name']}' has been deleted successfully.",
-            "success",
-        )
-
+        
+        if subadmin:
+            log_user_activity(
+                session.get("admin_id") or session.get("subadmin_id"),
+                session.get("admin_name") or session.get("subadmin_name"),
+                session.get("user_type"),
+                "Delete",
+                "Users/User Management",
+                f"Deleted User '{subadmin['subadmin_username']}' with ID '{user_id}'",
+            )
+        
+        flash("User has been deleted successfully.", "success")
+        
     except Exception as e:
         connection.rollback()
         current_app.logger.error(f"Error deleting user {user_id}: {e}")
         flash("An error occurred while deleting the user.", "danger")
     finally:
         connection.close()
-
     return redirect(url_for("main.userList"))
 
 
-# # =====================================================================
-# # Debugging Routes (from your AWS-compatible file for completeness)
-# # =====================================================================
+@main.route("/users/activities")
+@adm_login_required
+@subadmin_permission_required("USER_ACTIVITIES.view_user_activities")
+def usersActivities():
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    event_type = request.args.get('event_type')
+    user_filter = request.args.get('user')
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
 
+    connection = get_db_connection()
+    activities = []
+    total = 0
+    event_types = []
+
+    try:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            query = "SELECT * FROM user_activities"
+            conditions = []
+            params = []
+            if event_type:
+                conditions.append("event_type = %s")
+                params.append(event_type)
+            if user_filter:
+                conditions.append("user_name LIKE %s")
+                params.append(f"%{user_filter}%")
+            if date_from:
+                conditions.append("event_time >= %s")
+                params.append(date_from)
+            if date_to:
+                conditions.append("event_time <= %s")
+                params.append(f"{date_to} 23:59:59")
+
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+
+            count_query = "SELECT COUNT(*) as total FROM (" + query + ") as filtered"
+            cursor.execute(count_query, tuple(params))
+            total = cursor.fetchone()['total']
+
+            query += " ORDER BY id DESC LIMIT %s OFFSET %s"
+            params.extend([per_page, (page - 1) * per_page])
+
+            cursor.execute(query, tuple(params))
+            activities = cursor.fetchall()
+            
+            cursor.execute("SELECT DISTINCT event_type FROM user_activities ORDER BY event_type")
+            event_types = [row['event_type'] for row in cursor.fetchall()]
+
+    except Exception as e:
+        current_app.logger.error(f"Error fetching user activities: {e}")
+        flash("An error occurred while fetching user activities.", "danger")
+    finally:
+        connection.close()
+    
+    total_pages = (total + per_page - 1) // per_page
+    page_items, last_page = [], 0
+    for page_num in range(1, total_pages + 1):
+        if page_num <= 2 or page_num > total_pages - 2 or abs(page_num - page) <= 2:
+            if last_page + 1 != page_num:
+                page_items.append(None)
+            page_items.append(page_num)
+            last_page = page_num
+
+    pagination = {
+        'page': page,
+        'per_page': per_page,
+        'total': total,
+        'pages': total_pages,
+        'has_prev': page > 1,
+        'has_next': page * per_page < total,
+        'prev_num': page - 1,
+        'next_num': page + 1,
+        'iter_pages': lambda: page_items
+    }
+
+    return render_template(
+        'usersActivities.html',
+        activities=activities,
+        pagination=pagination,
+        event_types=event_types,
+        current_filters={
+            'event_type': event_type,
+            'user': user_filter,
+            'date_from': date_from,
+            'date_to': date_to
+        }
+    )
 
 @main.route("/debug/permissions")
 @adm_login_required
@@ -2425,119 +2814,3 @@ def debug_force_reload_permissions():
     else:
         flash("Not a subadmin user", "warning")
     return redirect(url_for("main.admDashboard"))
-
-
-# @main.route('/users/activities')
-# @adm_login_required
-# @subadmin_permission_required("USER_ACTIVITIES.view_user_activities")
-# def usersActivities():
-#     page = request.args.get('page', 1, type=int)
-#     per_page = 20
-#     event_type = request.args.get('event_type')
-#     user_filter = request.args.get('user')
-#     date_from = request.args.get('date_from')
-#     date_to = request.args.get('date_to')
-#
-#     activities = []
-#     total = 0
-#     event_types = []
-#     connection = get_db_connection()
-#     try:
-#         with connection.cursor() as cursor:
-#             # Base query targeting the unified activities table
-#             query = "SELECT * FROM user_activities"
-#             conditions = []
-#             params = []
-#
-#             # Apply filters
-#             if event_type:
-#                 conditions.append("event_type = %s")
-#                 params.append(event_type)
-#             if user_filter:
-#                 # Filter by the user_name column in the unified table
-#                 conditions.append("user_name LIKE %s")
-#                 params.append(f"%{user_filter}%")
-#             if date_from:
-#                 conditions.append("event_time >= %s")
-#                 params.append(date_from)
-#             if date_to:
-#                 conditions.append("event_time <= %s")
-#                 params.append(f"{date_to} 23:59:59")
-#
-#             if conditions:
-#                 query += " WHERE " + " AND ".join(conditions)
-#
-#             count_query = f"SELECT COUNT(*) as total FROM ({query}) as filtered"
-#             cursor.execute(count_query, tuple(params))
-#             total_result = cursor.fetchone()
-#             total = total_result['total'] if total_result else 0
-#
-#             query += " ORDER BY id DESC LIMIT %s OFFSET %s"
-#             params.extend([per_page, (page - 1) * per_page])
-#             cursor.execute(query, tuple(params))
-#             activities = cursor.fetchall()
-#
-#             cursor.execute("SELECT DISTINCT event_type FROM user_activities ORDER BY event_type")
-#             event_types = [row['event_type'] for row in cursor.fetchall()]
-#
-#     except Exception as e:
-#         current_app.logger.error(f"Error fetching user activities: {e}")
-#         flash("An error occurred while fetching user activities.", "danger")
-#     finally:
-#         connection.close()
-#
-#     total_pages = (total + per_page - 1) // per_page if total > 0 else 0
-#     page_items, last_page = [], 0
-#     for page_num in range(1, total_pages + 1):
-#         if page_num <= 2 or page_num > total_pages - 2 or abs(page_num - page) <= 2:
-#             if last_page + 1 != page_num:
-#                 page_items.append(None)
-#             page_items.append(page_num)
-#             last_page = page_num
-#
-#     pagination = {
-#         'page': page, 'per_page': per_page, 'total': total, 'pages': total_pages,
-#         'has_prev': page > 1, 'has_next': page < total_pages,
-#         'prev_num': page - 1, 'next_num': page + 1, 'iter_pages': lambda: page_items
-#     }
-#
-#     return render_template(
-#         'usersActivities.html',
-#         activities=activities,
-#         pagination=pagination,
-#         event_types=event_types,
-#         current_filters={
-#             'event_type': event_type,
-#             'user': user_filter,
-#             'date_from': date_from,
-#             'date_to': date_to
-#         }
-#     )
-
-
-# @main.route("/debug/permissions")
-# @adm_login_required
-# def debug_permissions():
-#     """Debug route to check current session permissions"""
-#     return jsonify(
-#         {
-#             "user_type": session.get("user_type"),
-#             "admin_id": session.get("admin_id"),
-#             "subadmin_id": session.get("subadmin_id"),
-#             "role_id": session.get("role_id"),
-#             "permissions": session.get("permissions"),
-#             "session_keys": list(session.keys()),
-#         }
-#     )
-
-
-# @main.route("/debug/force-reload-permissions")
-# @adm_login_required
-# def debug_force_reload_permissions():
-#     """Force reload permissions for debugging"""
-#     if "subadmin_id" in session:
-#         load_subadmin_permissions()
-#         flash("Permissions reloaded from database", "info")
-#     else:
-#         flash("Not a subadmin user", "warning")
-#     return redirect(url_for("main.admDashboard"))

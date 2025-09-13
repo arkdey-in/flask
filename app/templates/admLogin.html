@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Admin Login | ARCHIVES OF CABINET AFFAIRS DEPARTMENT</title>
+  <title>Administration Login | ARCHIVES OF CABINET AFFAIRS DEPARTMENT</title>
   
   <!-- favicon -->
   <link rel="icon" href="{{ url_for('static', filename='assets/images/favicon-32x32.png') }}" type="image/png">
@@ -98,33 +98,27 @@
                   <a href="#">Forgot Password?</a>
                 </div>
 
+                <div>
+                  <p>Looking for the main page? <a href="/">Go to Home.</a> </p>
+                </div>
+
+                <div class="col-12 text-start">
+                      <p class="mb-0">
+                        {% if registration_enabled %}
+                        Don't have an account yet?
+                        <a href="{{ url_for('main.supAdmRegistration') }}"
+                          >Register as Super Admin</a
+                        >
+                        {% endif %}
+                      </p>
+                </div>
+                
                 <div class="col-12">
                   <div class="d-grid">
                     {{ form.submit(class="btn btn-grd-primary") }}
                   </div>
                 </div>
               </form>
-            </div>
-
-            <div class="separator section-padding">
-              <div class="line"></div>
-              <p class="mb-0 fw-bold">OR SIGN IN WITH</p>
-              <div class="line"></div>
-            </div>
-
-            <div class="d-flex gap-3 justify-content-center mt-4">
-              <a href="javascript:;" class="wh-42 d-flex align-items-center justify-content-center rounded-circle bg-grd-danger">
-                <i class="bi bi-google fs-5 text-white"></i>
-              </a>
-              <a href="javascript:;" class="wh-42 d-flex align-items-center justify-content-center rounded-circle bg-grd-deep-blue">
-                <i class="bi bi-facebook fs-5 text-white"></i>
-              </a>
-              <a href="javascript:;" class="wh-42 d-flex align-items-center justify-content-center rounded-circle bg-grd-info">
-                <i class="bi bi-linkedin fs-5 text-white"></i>
-              </a>
-              <a href="javascript:;" class="wh-42 d-flex align-items-center justify-content-center rounded-circle bg-grd-royal">
-                <i class="bi bi-github fs-5 text-white"></i>
-              </a>
             </div>
 
           </div>
