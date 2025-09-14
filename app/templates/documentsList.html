@@ -91,11 +91,10 @@ endblock %}
           <td data-label="Category">{{ doc.category }}</td>
           <td data-label="Sub Category">{{ doc.sub_category }}</td>
           <td data-label="File">
-            <a href="{{ url_for('main.serve_file', filename=doc.file_path.split('/')[-1]) }}" target="_blank"
-              class="btn-action btn-view">
-              <i class="material-icons-outlined">visibility</i>View
-            </a>
-          </td>
+  <a href="{{ doc.file_path }}" target="_blank" class="btn-action btn-view">
+    <i class="material-icons-outlined">visibility</i>View
+  </a>
+</td>
           <td data-label="Description">{{ doc.description }}</td>
           <td data-label="Actions">
             <a href="{{ url_for('main.editDocument', doc_id=doc.id) }}" class="btn-action btn-edit">
