@@ -42,8 +42,7 @@ import magic
 import openai
 from PyPDF2 import PdfReader, PdfWriter
 from werkzeug.utils import secure_filename
-from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
-from azure.ai.documentintelligence.models import AnalyzeDocumentRequest 
+
 # Azure SDK
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
@@ -372,7 +371,7 @@ def perform_tesseract_ocr(filepath, mime_type):
 #     return poller.result()
 
 
-# This is the final, correct version for the stable library
+# REPLACE the entire function with this one
 def _azure_analyze_file(client, model_id, file_path_or_bytes):
     """
     Calls Azure DI Read/Layout and returns the result object.
@@ -380,13 +379,15 @@ def _azure_analyze_file(client, model_id, file_path_or_bytes):
     if isinstance(file_path_or_bytes, (bytes, bytearray)):
         poller = client.begin_analyze_document(
             model_id=model_id,
-            analyze_request=AnalyzeDocumentRequest(bytes_source=file_path_or_bytes)
+            body=file_path_or_bytes, # Use 'body' as the new error requests
+            content_type="application/pdf",
         )
     else:
         with open(file_path_or_bytes, "rb") as f:
             poller = client.begin_analyze_document(
                 model_id=model_id,
-                analyze_request=AnalyzeDocumentRequest(bytes_source=f.read())
+                body=f, # Use 'body' as the new error requests
+                content_type="application/pdf",
             )
     return poller.result()
 
