@@ -77,7 +77,11 @@
             <tbody>
                 {% for doc in documents %}
                 <tr>
-                    <td data-label="Date">{{ doc.formatted_date }}</td>
+                    <td data-label="Date">{% if document.created_at %}
+        {{ document.created_at.strftime('%d-%m-%Y %I:%M %p') }}
+    {% else %}
+        N/A
+    {% endif %}</td>
                     <td data-label="Title">{{ doc.title }}</td>
                     <td data-label="Category">{{ doc.category }}</td>
                     <td data-label="Sub Category">{{ doc.sub_category }}</td>
