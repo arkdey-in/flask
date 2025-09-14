@@ -372,19 +372,17 @@ def perform_tesseract_ocr(filepath, mime_type):
 #     return poller.result()
 
 
+# This is the final, correct version for the stable library
 def _azure_analyze_file(client, model_id, file_path_or_bytes):
     """
     Calls Azure DI Read/Layout and returns the result object.
-    Accepts either bytes or a path to keep memory usage predictable on big docs.
     """
     if isinstance(file_path_or_bytes, (bytes, bytearray)):
-        # If we already have bytes, wrap them in the request object
         poller = client.begin_analyze_document(
             model_id=model_id,
             analyze_request=AnalyzeDocumentRequest(bytes_source=file_path_or_bytes)
         )
     else:
-        # If we have a file path, open it, read the bytes, and wrap them
         with open(file_path_or_bytes, "rb") as f:
             poller = client.begin_analyze_document(
                 model_id=model_id,
