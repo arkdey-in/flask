@@ -542,12 +542,12 @@ def analyze_document_with_openai(ocr_text, doc_types_path="document_types.json")
 # 1.⁠ ⁠total documents uploaded + 
 # 2.⁠ ⁠Total characters/tokens extracted
 # 3.⁠ ⁠Total space used
-# 4.⁠ ⁠Total users
+# 4.⁠ ⁠Total users + 
 # 5.⁠ ⁠Total Token extracted from azure
 # 6.⁠ ⁠Total Token extracted from tesseract
-# 7.⁠ ⁠Total pages scanned 
-# 8.⁠ ⁠Total pages scanned by azure
-# 9.⁠ ⁠Total pages scanned by tesseract
+# 7.⁠ ⁠Total pages scanned + 
+# 8.⁠ ⁠Total pages scanned by azure +
+# 9.⁠ ⁠Total pages scanned by tesseract +
 # total admin +
 # total subadmin  +
 # total categories  + 
