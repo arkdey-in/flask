@@ -10,10 +10,7 @@ AFFAIRS DEPARTMENT{% endblock%} {%block content%}
   <!--start counting  part -->
   <div class="row">
     <div class="col-12 col-lg-6 col-xl-4 d-flex">
-      <a
-        href=""
-        class="card rounded-4 w-100"
-      >
+      <a href="" class="card rounded-4 w-100">
         <div class="card-body">
           <div class="d-flex align-items-center">
             <div class="">
@@ -181,33 +178,62 @@ AFFAIRS DEPARTMENT{% endblock%} {%block content%}
     </div>
 
     <div class="row">
-    <div class="col-12 col-lg-4 col-xl-4 d-flex">
+      <div class="col-12 col-lg-4 col-xl-4 d-flex">
         <div class="card rounded-4 w-100">
-            <div class="card-body">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div>
                 <p class="mb-1">Total Tokens Extracted</p>
                 <h3 class="mb-0">{{ "{:,}".format(stats.total_tokens) }}</h3>
+              </div>
+              <div
+                class="ms-auto wh-42 d-flex align-items-center justify-content-center rounded-circle bg-light-dark text-dark"
+              >
+                <span class="material-icons-outlined fs-5">functions</span>
+              </div>
             </div>
+          </div>
         </div>
-    </div>
+      </div>
 
-    <div class="col-12 col-lg-4 col-xl-4 d-flex">
+      <div class="col-12 col-lg-4 col-xl-4 d-flex">
         <div class="card rounded-4 w-100">
-            <div class="card-body">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div>
                 <p class="mb-1">Tesseract Tokens</p>
-                <h3 class="mb-0">{{ "{:,}".format(stats.tesseract_tokens) }}</h3>
+                <h3 class="mb-0">
+                  {{ "{:,}".format(stats.tesseract_tokens) }}
+                </h3>
+              </div>
+              <div
+                class="ms-auto wh-42 d-flex align-items-center justify-content-center rounded-circle bg-light-primary text-primary"
+              >
+                <span class="material-icons-outlined fs-5">text_fields</span>
+              </div>
             </div>
+          </div>
         </div>
-    </div>
+      </div>
 
-    <div class="col-12 col-lg-4 col-xl-4 d-flex">
+      <div class="col-12 col-lg-4 col-xl-4 d-flex">
         <div class="card rounded-4 w-100">
-            <div class="card-body">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div>
                 <p class="mb-1">Azure Tokens</p>
                 <h3 class="mb-0">{{ "{:,}".format(stats.azure_tokens) }}</h3>
+              </div>
+              <div
+                class="ms-auto wh-42 d-flex align-items-center justify-content-center rounded-circle bg-light-info text-info"
+              >
+                <span class="material-icons-outlined fs-5">cloud_done</span>
+              </div>
             </div>
+          </div>
         </div>
+      </div>
     </div>
-</div>
   </div>
   <!--end counting  part -->
 
