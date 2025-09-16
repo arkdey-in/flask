@@ -565,7 +565,10 @@ def get_dashboard_stats():
         'subcategories': 0,
         'tags': 0,
         'tesseract_count': 0,
-        'azure_count': 0
+        'azure_count': 0,
+        'total_tokens': 0, 
+        'tesseract_tokens': 0, 
+        'azure_tokens': 0 
     }
     connection = get_db_connection()
     try:
@@ -593,6 +596,15 @@ def get_dashboard_stats():
 
             cursor.execute("SELECT COUNT(*) AS count FROM documents WHERE ocr_engine = 'azure'")
             stats['azure_count'] = cursor.fetchone()['count']
+
+            cursor.execute("SELECT SUM(IFNULL(token_count, 0)) AS count FROM documents")
+            stats['total_tokens'] = cursor.fetchone()['count'] or 0
+
+            cursor.execute("SELECT SUM(IFNULL(token_count, 0)) AS count FROM documents WHERE ocr_engine = 'tesseract'")
+            stats['tesseract_tokens'] = cursor.fetchone()['count'] or 0
+
+            cursor.execute("SELECT SUM(IFNULL(token_count, 0)) AS count FROM documents WHERE ocr_engine = 'azure'")
+            stats['azure_tokens'] = cursor.fetchone()['count'] or 0
 
     except Exception as e:
         current_app.logger.error(f"Error fetching dashboard stats: {e}")
@@ -1802,6 +1814,9 @@ def addNewDocuments():
                     os.remove(filepath)
                     session.pop("processing_filepath", None)
                     return jsonify({"error": "OCR failed to extract any text from the document."}), 400
+                
+                token_count = len(raw_text.split())
+                session['form_data_for_submission']['token_count'] = token_count
 
                 log_user_activity(
                     session.get("admin_id") or session.get("subadmin_id"),
@@ -1948,17 +1963,18 @@ def submitDocument():
 
         with connection.cursor() as cursor:
             sql = """
-                INSERT INTO documents (title, category, sub_category, tags, file_path, extracted_data, ocr_engine)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO documents (title, category, sub_category, tags, file_path, extracted_data, ocr_engine, token_count)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
             params = (
                 form_data.get("title"),
                 form_data.get("category"),
                 form_data.get("sub_category"),
                 form_data.get("tags"),
-                file_url, # Use the S3 URL
+                file_url,
                 edited_data_json_str,
-                form_data.get("ocr_engine") # New value added
+                form_data.get("ocr_engine"),
+                form_data.get("token_count", 0) 
             )
             cursor.execute(sql, params)
         connection.commit()
