@@ -104,6 +104,7 @@ AFFAIRS DEPARTMENT{% endblock%} {%block content%}
         </div>
       </a>
     </div>
+
     <div class="col-12 col-lg-6 col-xl-4 d-flex">
       <a href="{{ url_for('main.documentList') }}" class="card rounded-4 w-100">
         <div class="card-body">
@@ -120,6 +121,42 @@ AFFAIRS DEPARTMENT{% endblock%} {%block content%}
           </div>
         </div>
       </a>
+    </div>
+
+    <div class="col-12 col-lg-6 col-xl-4 d-flex">
+      <div class="card rounded-4 w-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div>
+              <p class="mb-1">Processed by Tesseract</p>
+              <h3 class="mb-0">{{ stats.tesseract_count }}</h3>
+            </div>
+            <div
+              class="ms-auto wh-42 d-flex align-items-center justify-content-center rounded-circle bg-light-primary text-primary"
+            >
+              <span class="material-icons-outlined fs-5">text_fields</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-6 col-xl-4 d-flex">
+      <div class="card rounded-4 w-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div>
+              <p class="mb-1">Processed by Azure</p>
+              <h3 class="mb-0">{{ stats.azure_count }}</h3>
+            </div>
+            <div
+              class="ms-auto wh-42 d-flex align-items-center justify-content-center rounded-circle bg-light-info text-info"
+            >
+              <span class="material-icons-outlined fs-5">cloud_done</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <!--end counting  part -->

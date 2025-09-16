@@ -563,7 +563,9 @@ def get_dashboard_stats():
         'subadmin': 0,
         'categories': 0,
         'subcategories': 0,
-        'tags': 0
+        'tags': 0,
+        'tesseract_count': 0,
+        'azure_count': 0
     }
     connection = get_db_connection()
     try:
@@ -585,6 +587,12 @@ def get_dashboard_stats():
 
             cursor.execute("SELECT COUNT(*) AS count FROM tags")
             stats['tags'] = cursor.fetchone()['count']
+
+            cursor.execute("SELECT COUNT(*) AS count FROM documents WHERE ocr_engine = 'tesseract'")
+            stats['tesseract_count'] = cursor.fetchone()['count']
+
+            cursor.execute("SELECT COUNT(*) AS count FROM documents WHERE ocr_engine = 'azure'")
+            stats['azure_count'] = cursor.fetchone()['count']
 
     except Exception as e:
         current_app.logger.error(f"Error fetching dashboard stats: {e}")
@@ -1217,7 +1225,7 @@ def admLogin():
 def admDashboard():
 
     dashboard_stats = get_dashboard_stats()
-    
+
     return render_template("admDashboard.html", stats=dashboard_stats)
 
 
@@ -1780,6 +1788,9 @@ def addNewDocuments():
                 session["form_data_for_submission"] = dict(form_data)
 
                 ocr_engine = form_data.get("ocr_engine", "azure")
+
+                session["form_data_for_submission"]['ocr_engine'] = ocr_engine
+
                 raw_text = ""
                 if ocr_engine == "tesseract":
                     mime_type = magic.from_file(filepath, mime=True)
@@ -1901,7 +1912,7 @@ def addNewDocuments():
 #     finally:
 #         connection.close()
 
-# REPLACE the old function with this one
+
 @main.route("/documents/submit", methods=["POST"])
 @adm_login_required
 def submitDocument():
@@ -1937,8 +1948,8 @@ def submitDocument():
 
         with connection.cursor() as cursor:
             sql = """
-                INSERT INTO documents (title, category, sub_category, tags, file_path, extracted_data)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO documents (title, category, sub_category, tags, file_path, extracted_data, ocr_engine)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             """
             params = (
                 form_data.get("title"),
@@ -1947,6 +1958,7 @@ def submitDocument():
                 form_data.get("tags"),
                 file_url, # Use the S3 URL
                 edited_data_json_str,
+                form_data.get("ocr_engine") # New value added
             )
             cursor.execute(sql, params)
         connection.commit()
