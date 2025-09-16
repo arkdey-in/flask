@@ -535,6 +535,66 @@ def analyze_document_with_openai(ocr_text, doc_types_path="document_types.json")
     except Exception as e:
         raise ConnectionError(f"OpenAI API call failed: {e}")
 
+# ---------------------------------------------------------------------
+# Counter functions for Dashboards
+# ---------------------------------------------------------------------
+
+# 1.⁠ ⁠total documents uploaded + 
+# 2.⁠ ⁠Total characters/tokens extracted
+# 3.⁠ ⁠Total space used
+# 4.⁠ ⁠Total users
+# 5.⁠ ⁠Total Token extracted from azure
+# 6.⁠ ⁠Total Token extracted from tesseract
+# 7.⁠ ⁠Total pages scanned 
+# 8.⁠ ⁠Total pages scanned by azure
+# 9.⁠ ⁠Total pages scanned by tesseract
+# total admin +
+# total subadmin  +
+# total categories  + 
+# total subCategories  +
+# total tags +
+
+
+def get_dashboard_stats():
+    """Fetches various statistics for the dashboard from the database."""
+    stats = {
+        'upload': 0,
+        'admin': 0,
+        'subadmin': 0,
+        'categories': 0,
+        'subcategories': 0,
+        'tags': 0
+    }
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) AS count FROM documents")
+            stats['upload'] = cursor.fetchone()['count']
+
+            cursor.execute("SELECT COUNT(*) AS count FROM admin")
+            stats['admin'] = cursor.fetchone()['count']
+
+            cursor.execute("SELECT COUNT(*) AS count FROM subadmin")
+            stats['subadmin'] = cursor.fetchone()['count'] # CORRECTED KEY
+
+            cursor.execute("SELECT COUNT(*) AS count FROM categories")
+            stats['categories'] = cursor.fetchone()['count']
+
+            cursor.execute("SELECT COUNT(*) AS count FROM sub_categories")
+            stats['subcategories'] = cursor.fetchone()['count']
+
+            cursor.execute("SELECT COUNT(*) AS count FROM tags")
+            stats['tags'] = cursor.fetchone()['count']
+
+    except Exception as e:
+        current_app.logger.error(f"Error fetching dashboard stats: {e}")
+        # Returns the dictionary of zeros in case of an error
+    finally:
+        if connection:
+            connection.close()
+
+    return stats
+
 
 # ---------------------------------------------------------------------
 # Decorators
@@ -1150,11 +1210,17 @@ def admLogin():
     return render_template("admLogin.html", form=form)
 
 
+
 @main.route("/admin/admdashboard")
 @adm_login_required
 @subadmin_permission_required("DASHBOARDS.view_dashboard")
 def admDashboard():
-    return render_template("admDashboard.html")
+
+    dashboard_stats = get_dashboard_stats()
+    
+    return render_template("admDashboard.html", stats=dashboard_stats)
+
+
 
 @main.route("/admin/admlogout")
 @adm_login_required
