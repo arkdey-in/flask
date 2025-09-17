@@ -90,10 +90,12 @@ endblock %}
           <td data-label="Title">{{ doc.title }}</td>
           <td data-label="Category">{{ doc.category }}</td>
           <td data-label="Sub Category">{{ doc.sub_category }}</td>
-          <td data-label="File">
-  <a href="{{ doc.file_path }}" target="_blank" class="btn-action btn-view">
-    <i class="material-icons-outlined">visibility</i>View
-  </a>
+         <td data-label="File">
+    <p class="mb-1">{{ doc.original_filename or 'N/A' }}</p>
+
+    <a href="{{ doc.file_path }}" target="_blank" class="btn-action btn-view btn-sm">
+        <i class="material-icons-outlined">visibility</i> View
+    </a>
 </td>
           <td data-label="Description">{{ doc.description }}</td>
           <td data-label="Actions">

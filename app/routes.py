@@ -1842,6 +1842,93 @@ def delete_tag(tag_id):
 # # ---------------------------------------------------------------------
 
 
+# @main.route("/documents/add-new", methods=["GET", "POST"])
+# @adm_login_required
+# @subadmin_permission_required("DOCUMENTS.create_document")
+# def addNewDocuments():
+#     """
+#     Handles the initial form submission for document analysis.
+#     Performs OCR and AI analysis and returns the extracted data to the client.
+#     """
+#     if request.method == "POST":
+#         if "file" not in request.files:
+#             return jsonify({"error": "No file part in the request"}), 400
+#         file = request.files["file"]
+#         if file.filename == "":
+#             return jsonify({"error": "No file selected"}), 400
+
+#         form_data = request.form
+#         title = form_data.get("title")
+#         if not title:
+#             return jsonify({"error": "Title is a required field."}), 400
+
+#         filepath = None
+#         try:
+#             if file and allowed_file(file.filename):
+#                 original_filename = secure_filename(file.filename)
+#                 file_extension = os.path.splitext(original_filename)[1]
+#                 unique_filename = f"{uuid.uuid4().hex}{file_extension}"
+#                 filepath = os.path.join(
+#                     current_app.config["UPLOAD_FOLDER"], unique_filename
+#                 )
+#                 file.save(filepath)
+
+#                 # Store the filepath and original filename in the session for final submission
+#                 session["processing_filepath"] = filepath
+#                 session["processing_filename"] = original_filename
+#                 session["form_data_for_submission"] = dict(form_data)
+
+#                 ocr_engine = form_data.get("ocr_engine", "azure")
+
+#                 session["form_data_for_submission"]['ocr_engine'] = ocr_engine
+
+#                 raw_text = ""
+#                 if ocr_engine == "tesseract":
+#                     mime_type = magic.from_file(filepath, mime=True)
+#                     raw_text = perform_tesseract_ocr(filepath, mime_type)
+#                 else:
+#                     raw_text = perform_azure_ocr(filepath)
+
+#                 if not raw_text.strip():
+#                     os.remove(filepath)
+#                     session.pop("processing_filepath", None)
+#                     return jsonify({"error": "OCR failed to extract any text from the document."}), 400
+                
+#                 token_count = len(raw_text.split())
+#                 session['form_data_for_submission']['token_count'] = token_count
+
+#                 log_user_activity(
+#                     session.get("admin_id") or session.get("subadmin_id"),
+#                     session.get("admin_name") or session.get("subadmin_name"),
+#                     session.get("user_type"),
+#                     "File Upload",
+#                     "Documents/Add New",
+#                     f"Uploaded document '{original_filename}' for analysis."
+#                 )
+
+#                 analysis_result = analyze_document_with_openai(raw_text)
+#                 return jsonify(
+#                     {
+#                         "message": "Document analyzed successfully. Please review and save.",
+#                         "extracted_data": analysis_result,
+#                     }
+#                 )
+#             else:
+#                 return jsonify({"error": "File type not allowed"}), 400
+#         except ConnectionError as e:
+#             if filepath and os.path.exists(filepath):
+#                 os.remove(filepath)
+#             return jsonify({"error": str(e)}), 500
+#         except Exception as e:
+#             if filepath and os.path.exists(filepath):
+#                 os.remove(filepath)
+#             current_app.logger.error(f"An unexpected error occurred: {e}")
+#             return jsonify({"error": "An internal error occurred. Please try again later."}), 500
+
+#     return render_template("addNewDocuments.html")
+
+
+
 @main.route("/documents/add-new", methods=["GET", "POST"])
 @adm_login_required
 @subadmin_permission_required("DOCUMENTS.create_document")
@@ -1866,20 +1953,24 @@ def addNewDocuments():
         try:
             if file and allowed_file(file.filename):
                 original_filename = secure_filename(file.filename)
+                
+                # --- CHANGE: Generate a unique filename for storage ---
                 file_extension = os.path.splitext(original_filename)[1]
                 unique_filename = f"{uuid.uuid4().hex}{file_extension}"
+                
+                # Save the temp file with the unique name
                 filepath = os.path.join(
                     current_app.config["UPLOAD_FOLDER"], unique_filename
                 )
                 file.save(filepath)
 
-                # Store the filepath and original filename in the session for final submission
+                # --- CHANGE: Store BOTH filenames in the session for the next step ---
                 session["processing_filepath"] = filepath
-                session["processing_filename"] = original_filename
+                session["original_filename"] = original_filename          # For displaying to user
+                session["unique_filename_for_s3"] = unique_filename    # For saving to S3
                 session["form_data_for_submission"] = dict(form_data)
 
                 ocr_engine = form_data.get("ocr_engine", "azure")
-
                 session["form_data_for_submission"]['ocr_engine'] = ocr_engine
 
                 raw_text = ""
@@ -2007,6 +2098,82 @@ def addNewDocuments():
 #         connection.close()
 
 
+# @main.route("/documents/submit", methods=["POST"])
+# @adm_login_required
+# def submitDocument():
+#     """
+#     Handles the final submission after the user has reviewed and edited the extracted data.
+#     """
+#     filepath = session.get("processing_filepath")
+#     form_data = session.get("form_data_for_submission")
+#     original_filename = session.get("processing_filename")
+
+#     if not filepath or not form_data or not original_filename:
+#         return jsonify({"error": "Analysis data not found. Please re-analyze the document."}), 400
+
+#     edited_data_json_str = request.form.get("extracted_data")
+#     if not edited_data_json_str:
+#         return jsonify({"error": "No extracted data provided for submission."}), 400
+
+#     try:
+#         json.loads(edited_data_json_str)
+#     except json.JSONDecodeError:
+#         return jsonify({"error": "Invalid JSON format in the extracted data."}), 400
+
+#     connection = get_db_connection()
+#     try:
+#         file_url = None
+#         # Use the file from the session's temporary path for S3 upload
+#         with open(filepath, 'rb') as f:
+#             # CHANGED: We now pass the original filename directly to our helper
+#             file_url = upload_file_to_s3(f, current_app.config.get("AWS_S3_BUCKET"), original_filename)
+
+#         if not file_url:
+#             raise Exception("Failed to upload file to S3.")
+
+#         with connection.cursor() as cursor:
+#             sql = """
+#                 INSERT INTO documents (title, category, sub_category, tags, file_path, extracted_data, ocr_engine, token_count)
+#                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+#             """
+#             params = (
+#                 form_data.get("title"),
+#                 form_data.get("category"),
+#                 form_data.get("sub_category"),
+#                 form_data.get("tags"),
+#                 file_url,
+#                 edited_data_json_str,
+#                 form_data.get("ocr_engine"),
+#                 form_data.get("token_count", 0) 
+#             )
+#             cursor.execute(sql, params)
+#         connection.commit()
+
+#         log_user_activity(
+#             session.get("admin_id") or session.get("subadmin_id"),
+#             session.get("admin_name") or session.get("subadmin_name"),
+#             session.get("user_type"),
+#             "Create",
+#             "Documents/Submit",
+#             f"Saved new document '{form_data.get('title')}' with S3 URL: {file_url}"
+#         )
+        
+#         return jsonify({"message": "Document and extracted data saved successfully!"})
+
+#     except Exception as e:
+#         connection.rollback()
+#         current_app.logger.error(f"An unexpected error occurred during submission: {e}")
+#         return jsonify({"error": f"An internal error occurred during submission: {str(e)}"}), 500
+#     finally:
+#         # Clean up the local temporary file and session data
+#         if filepath and os.path.exists(filepath):
+#             os.remove(filepath)
+#         session.pop("processing_filepath", None)
+#         session.pop("form_data_for_submission", None)
+#         session.pop("processing_filename", None)
+#         connection.close()
+
+
 @main.route("/documents/submit", methods=["POST"])
 @adm_login_required
 def submitDocument():
@@ -2015,9 +2182,11 @@ def submitDocument():
     """
     filepath = session.get("processing_filepath")
     form_data = session.get("form_data_for_submission")
-    original_filename = session.get("processing_filename")
+    # --- CHANGED: Get both filenames from the session ---
+    original_filename = session.get("original_filename")
+    unique_filename_for_s3 = session.get("unique_filename_for_s3")
 
-    if not filepath or not form_data or not original_filename:
+    if not all([filepath, form_data, original_filename, unique_filename_for_s3]):
         return jsonify({"error": "Analysis data not found. Please re-analyze the document."}), 400
 
     edited_data_json_str = request.form.get("extracted_data")
@@ -2032,18 +2201,19 @@ def submitDocument():
     connection = get_db_connection()
     try:
         file_url = None
-        # Use the file from the session's temporary path for S3 upload
         with open(filepath, 'rb') as f:
-            # CHANGED: We now pass the original filename directly to our helper
-            file_url = upload_file_to_s3(f, current_app.config.get("AWS_S3_BUCKET"), original_filename)
+            # --- CHANGED: Upload to S3 using the UNIQUE filename ---
+            file_url = upload_file_to_s3(f, current_app.config.get("AWS_S3_BUCKET"), unique_filename_for_s3)
 
         if not file_url:
             raise Exception("Failed to upload file to S3.")
 
         with connection.cursor() as cursor:
+            # --- CHANGED: Added original_filename to the INSERT statement ---
             sql = """
-                INSERT INTO documents (title, category, sub_category, tags, file_path, extracted_data, ocr_engine, token_count)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO documents (title, category, sub_category, tags, file_path, 
+                                       extracted_data, ocr_engine, token_count, original_filename)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             params = (
                 form_data.get("title"),
@@ -2053,7 +2223,8 @@ def submitDocument():
                 file_url,
                 edited_data_json_str,
                 form_data.get("ocr_engine"),
-                form_data.get("token_count", 0) 
+                form_data.get("token_count", 0),
+                original_filename # The new value to save
             )
             cursor.execute(sql, params)
         connection.commit()
@@ -2074,12 +2245,13 @@ def submitDocument():
         current_app.logger.error(f"An unexpected error occurred during submission: {e}")
         return jsonify({"error": f"An internal error occurred during submission: {str(e)}"}), 500
     finally:
-        # Clean up the local temporary file and session data
         if filepath and os.path.exists(filepath):
             os.remove(filepath)
+        # --- CHANGED: Clear all new session variables ---
         session.pop("processing_filepath", None)
         session.pop("form_data_for_submission", None)
-        session.pop("processing_filename", None)
+        session.pop("original_filename", None)
+        session.pop("unique_filename_for_s3", None)
         connection.close()
 
 
