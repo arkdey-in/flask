@@ -567,42 +567,70 @@ def format_bytes(size):
         n += 1
     return f"{size:.2f} {power_labels[n]}B"
 
+# def get_s3_bucket_size():
+#     """Fetches the total bucket size from AWS CloudWatch."""
+#     try:
+#         cloudwatch = boto3.client(
+#             "cloudwatch",
+#             aws_access_key_id=current_app.config.get("AWS_ACCESS_KEY"),
+#             aws_secret_access_key=current_app.config.get("AWS_SECRET_KEY"),
+#             region_name=current_app.config.get("AWS_REGION"),
+#         )
+#         bucket_name = current_app.config.get("AWS_S3_BUCKET")
+        
+#         # Get the latest data point from the last 48 hours
+#         response = cloudwatch.get_metric_statistics(
+#             Namespace='AWS/S3',
+#             MetricName='BucketSizeBytes',
+#             Dimensions=[
+#                 {'Name': 'BucketName', 'Value': bucket_name},
+#                 {'Name': 'StorageType', 'Value': 'StandardStorage'}
+#             ],
+#             StartTime=datetime.utcnow() - timedelta(days=2),
+#             EndTime=datetime.utcnow(),
+#             Period=86400, # Daily
+#             Statistics=['Average'],
+#             Unit='Bytes'
+#         )
+        
+#         if response['Datapoints']:
+#             # Get the most recent data point
+#             latest_datapoint = sorted(response['Datapoints'], key=lambda x: x['Timestamp'], reverse=True)[0]
+#             size_in_bytes = latest_datapoint['Average']
+#             return format_bytes(size_in_bytes)
+#         else:
+#             return "0 B" # No data yet
+#     except Exception as e:
+#         current_app.logger.error(f"Could not get S3 bucket size from CloudWatch: {e}")
+#         return "Error"
+
 def get_s3_bucket_size():
-    """Fetches the total bucket size from AWS CloudWatch."""
+    """
+    Calculates the total bucket size by iterating through all objects in real-time.
+    WARNING: This can be VERY SLOW for buckets with many files.
+    """
     try:
-        cloudwatch = boto3.client(
-            "cloudwatch",
-            aws_access_key_id=current_app.config.get("AWS_ACCESS_KEY"),
-            aws_secret_access_key=current_app.config.get("AWS_SECRET_KEY"),
-            region_name=current_app.config.get("AWS_REGION"),
-        )
+        s3 = get_s3_client()
         bucket_name = current_app.config.get("AWS_S3_BUCKET")
+        total_size = 0
+
+        # S3 lists objects in "pages" of 1000. We must loop through all pages.
+        # A paginator handles this looping for us automatically.
+        paginator = s3.get_paginator('list_objects_v2')
+        pages = paginator.paginate(Bucket=bucket_name)
+
+        for page in pages:
+            # The 'Contents' key might not exist if a page is empty or the bucket is empty
+            for obj in page.get('Contents', []):
+                total_size += obj['Size']
         
-        # Get the latest data point from the last 48 hours
-        response = cloudwatch.get_metric_statistics(
-            Namespace='AWS/S3',
-            MetricName='BucketSizeBytes',
-            Dimensions=[
-                {'Name': 'BucketName', 'Value': bucket_name},
-                {'Name': 'StorageType', 'Value': 'StandardStorage'}
-            ],
-            StartTime=datetime.utcnow() - timedelta(days=2),
-            EndTime=datetime.utcnow(),
-            Period=86400, # Daily
-            Statistics=['Average'],
-            Unit='Bytes'
-        )
-        
-        if response['Datapoints']:
-            # Get the most recent data point
-            latest_datapoint = sorted(response['Datapoints'], key=lambda x: x['Timestamp'], reverse=True)[0]
-            size_in_bytes = latest_datapoint['Average']
-            return format_bytes(size_in_bytes)
-        else:
-            return "0 B" # No data yet
+        # We can reuse our existing helper to make the number readable
+        return format_bytes(total_size)
+    
     except Exception as e:
-        current_app.logger.error(f"Could not get S3 bucket size from CloudWatch: {e}")
+        current_app.logger.error(f"Could not get S3 bucket size by iterating: {e}")
         return "Error"
+
 
 def get_dashboard_stats():
     """Fetches various statistics for the dashboard from the database."""
