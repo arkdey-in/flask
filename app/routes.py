@@ -57,6 +57,7 @@ import boto3
 from botocore.exceptions import ClientError
 import pymysql.cursors
 import pymysql.err
+from datetime import datetime, timedelta
 
 
 # --- Blueprint Definition ---
@@ -554,6 +555,54 @@ def analyze_document_with_openai(ocr_text, doc_types_path="document_types.json")
 # total subCategories  +
 # total tags +
 
+def format_bytes(size):
+    """Converts bytes to a human-readable format (KB, MB, GB)."""
+    if size is None:
+        return "N/A"
+    power = 1024
+    n = 0
+    power_labels = {0: '', 1: 'K', 2: 'M', 3: 'G', 4: 'T'}
+    while size >= power and n < len(power_labels) -1 :
+        size /= power
+        n += 1
+    return f"{size:.2f} {power_labels[n]}B"
+
+def get_s3_bucket_size():
+    """Fetches the total bucket size from AWS CloudWatch."""
+    try:
+        cloudwatch = boto3.client(
+            "cloudwatch",
+            aws_access_key_id=current_app.config.get("AWS_ACCESS_KEY"),
+            aws_secret_access_key=current_app.config.get("AWS_SECRET_KEY"),
+            region_name=current_app.config.get("AWS_REGION"),
+        )
+        bucket_name = current_app.config.get("AWS_S3_BUCKET")
+        
+        # Get the latest data point from the last 48 hours
+        response = cloudwatch.get_metric_statistics(
+            Namespace='AWS/S3',
+            MetricName='BucketSizeBytes',
+            Dimensions=[
+                {'Name': 'BucketName', 'Value': bucket_name},
+                {'Name': 'StorageType', 'Value': 'StandardStorage'}
+            ],
+            StartTime=datetime.utcnow() - timedelta(days=2),
+            EndTime=datetime.utcnow(),
+            Period=86400, # Daily
+            Statistics=['Average'],
+            Unit='Bytes'
+        )
+        
+        if response['Datapoints']:
+            # Get the most recent data point
+            latest_datapoint = sorted(response['Datapoints'], key=lambda x: x['Timestamp'], reverse=True)[0]
+            size_in_bytes = latest_datapoint['Average']
+            return format_bytes(size_in_bytes)
+        else:
+            return "0 B" # No data yet
+    except Exception as e:
+        current_app.logger.error(f"Could not get S3 bucket size from CloudWatch: {e}")
+        return "Error"
 
 def get_dashboard_stats():
     """Fetches various statistics for the dashboard from the database."""
@@ -568,7 +617,8 @@ def get_dashboard_stats():
         'azure_count': 0,
         'total_tokens': 0, 
         'tesseract_tokens': 0, 
-        'azure_tokens': 0 
+        'azure_tokens': 0 ,
+        's3_size': '0 B'
     }
     connection = get_db_connection()
     try:
@@ -612,6 +662,7 @@ def get_dashboard_stats():
     finally:
         if connection:
             connection.close()
+    stats['s3_size'] = get_s3_bucket_size()
 
     return stats
 
