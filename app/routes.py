@@ -110,30 +110,54 @@ def get_s3_client():
 #         return None
 
 
-def upload_file_to_s3(file_obj, bucket_name, object_name, acl="public-read"): # CHANGED: Added object_name
+# def upload_file_to_s3(file_obj, bucket_name, object_name, acl="public-read"): # CHANGED: Added object_name
+#     """Uploads a file object to S3."""
+#     s3_client = get_s3_client()
+#     try:
+#         # Get the content type from the file object if it exists
+#         content_type = getattr(file_obj, 'content_type', 'application/octet-stream')
+        
+#         s3_client.upload_fileobj(
+#             file_obj,       # This is the file object
+#             bucket_name,
+#             object_name,    # CHANGED: Use the provided object_name
+#             ExtraArgs={
+#                 "ACL": acl,
+#                 "ContentType": content_type
+#             }
+#         )
+#         # Generate the URL
+#         aws_region = current_app.config.get("AWS_REGION")
+#         url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{object_name}" # CHANGED: Use object_name
+#         return url
+#     except ClientError as e:
+#         current_app.logger.error(f"Error uploading to S3: {e}")
+#         return None
+
+# REPLACE the old function with this one
+def upload_file_to_s3(file_obj, bucket_name, object_name):
     """Uploads a file object to S3."""
     s3_client = get_s3_client()
     try:
-        # Get the content type from the file object if it exists
         content_type = getattr(file_obj, 'content_type', 'application/octet-stream')
-        
+
         s3_client.upload_fileobj(
-            file_obj,       # This is the file object
+            file_obj,
             bucket_name,
-            object_name,    # CHANGED: Use the provided object_name
+            object_name,
             ExtraArgs={
-                "ACL": acl,
                 "ContentType": content_type
-            }
+            } # The "ACL" argument has been removed
         )
-        # Generate the URL
+
         aws_region = current_app.config.get("AWS_REGION")
-        url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{object_name}" # CHANGED: Use object_name
+        url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{object_name}"
         return url
     except ClientError as e:
         current_app.logger.error(f"Error uploading to S3: {e}")
         return None
-
+    
+    
 def delete_file_from_s3(key, bucket_name):
     """Deletes a file from S3 using its key (filename)."""
     s3_client = get_s3_client()
