@@ -69,15 +69,25 @@ main = Blueprint("main", __name__)
 # ---------------------------------------------------------------------
 
 # S3 client and functions
+# def get_s3_client():
+#     """Initializes and returns the Boto3 S3 client using app config."""
+#     return boto3.client(
+#         "s3",
+#         aws_access_key_id=current_app.config.get("AWS_ACCESS_KEY"),
+#         aws_secret_access_key=current_app.config.get("AWS_SECRET_KEY"),
+#         region_name=current_app.config.get("AWS_REGION"),
+#     )
+
+# REPLACE the old function with this one
 def get_s3_client():
-    """Initializes and returns the Boto3 S3 client using app config."""
+    """
+    Initializes and returns the Boto3 S3 client.
+    It will automatically use the IAM Role when running on EC2.
+    """
     return boto3.client(
         "s3",
-        aws_access_key_id=current_app.config.get("AWS_ACCESS_KEY"),
-        aws_secret_access_key=current_app.config.get("AWS_SECRET_KEY"),
-        region_name=current_app.config.get("AWS_REGION"),
+        region_name=current_app.config.get("AWS_REGION")
     )
-
 # def upload_file_to_s3(file, bucket_name, acl="public-read"):
 #     """Uploads a file object to S3."""
 #     s3_client = get_s3_client()
