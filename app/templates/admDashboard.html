@@ -313,8 +313,6 @@ AFFAIRS DEPARTMENT{% endblock%} {%block content%}
             >
               <span class="material-icons-outlined fs-5">group</span>
             </div>
-            <div>
-            </div>
           </div>
           <div>
             <p class="mb-1">Total Users (Subadmins)</p>
@@ -333,17 +331,12 @@ AFFAIRS DEPARTMENT{% endblock%} {%block content%}
             <div
               class="wh-42 d-flex align-items-center justify-content-center rounded-circle bg-info bg-opacity-10 text-info"
             >
-              <span class="material-icons-outlined fs-5">visibility</span>
-            </div>
-            <div>
-              <span class="text-danger d-flex align-items-center"
-                >-35%<i class="material-icons-outlined">expand_less</i></span
-              >
+              <span class="material-icons-outlined fs-5">storage</span>
             </div>
           </div>
           <div>
-            <h4 class="mb-0">189K</h4>
-            <p class="mb-3">Total Visits</p>
+           <p class="mb-1">S3 Storage Used</p>
+              <h3 class="mb-0">{{ stats.s3_size }}</h3>
             {# <div id="chart3"></div> #}
           </div>
         </div>
