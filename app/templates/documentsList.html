@@ -4,10 +4,11 @@
 
 {% block content %}
 <div class="container-fluid-custom">
-    <h1>Document List</h1>
+    <h1>DOCUMENTS LIST</h1>
     <div class="breadcrumb">
         <a href="{{ url_for('main.admDashboard') }}">Dashboard</a> &raquo;
-        <a href="{{ url_for('main.documentList') }}">Document List</a> &raquo;
+        <a href="{{ url_for('main.documentList') }}">Documents</a> &raquo;
+        <span>Documents List</span>
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -16,17 +17,33 @@
         {% for category, message in messages %}
         <div role="alert" class="alert-message {{ category }}">
             <span>{{ message }}</span>
-            <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';" aria-label="Close">
-                &times;
-            </button>
+            <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';" aria-label="Close">&times;</button>
         </div>
         {% endfor %}
     </div>
     {% endif %}
     {% endwith %}
 
-    <!-- Filter Form -->
+    <!-- Filter Section -->
     <div class="add-category-form-card">
+
+        <!-- Toggle Tabs (Centered) -->
+        <div class="d-flex justify-content-center mb-3">
+            <ul class="nav nav-tabs border-0">
+                <li class="nav-item">
+                    <a id="listTab" class="nav-link active" href="javascript:void(0)">
+                        <i class="material-icons-outlined">list</i> List View
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a id="gridTab" class="nav-link" href="javascript:void(0)">
+                        <i class="material-icons-outlined">grid_view</i> Grid View
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Filters -->
         <form method="GET" action="{{ url_for('main.documentList') }}">
             <div class="row">
                 <div class="col-md-4 mb-3">
@@ -58,19 +75,13 @@
                 <input type="search" name="search" class="form-control"
                        placeholder="Search by keyword in Title, Description, Tags, or Extracted Data..."
                        value="{{ current_filters.search }}">
-                <button type="submit" class="btn btn-grd-primary">Search</button>
+                <button type="submit" class="btn btn-grd-primary">Apply Filters</button>
             </div>
         </form>
     </div>
 
-    <!-- Toggle Buttons -->
-    <div class="view-toggle my-3">
-        <button id="listViewBtn" class="btn btn-grd-primary">List View</button>
-        <button id="gridViewBtn" class="btn btn-outline-primary">Grid View</button>
-    </div>
-
     <!-- LIST VIEW -->
-    <div id="listView" class="category-list-table-card">
+    <div id="listView" class="category-list-table-card mt-3">
         <table class="category-list-table">
             <thead>
                 <tr>
@@ -93,17 +104,17 @@
                             N/A
                         {% endif %}
                     </td>
-                    <td data-label="Title">{{ doc.title }}</td>
-                    <td data-label="Category">{{ doc.category }}</td>
-                    <td data-label="Sub Category">{{ doc.sub_category }}</td>
-                    <td data-label="File">
+                    <td>{{ doc.title }}</td>
+                    <td>{{ doc.category }}</td>
+                    <td>{{ doc.sub_category }}</td>
+                    <td>
                         <p class="mb-1">{{ doc.original_filename or 'N/A' }}</p>
                         <a href="{{ doc.file_path }}" target="_blank" class="btn-action btn-view btn-sm">
                             <i class="material-icons-outlined">visibility</i> View
                         </a>
                     </td>
-                    <td data-label="Description">{{ doc.description }}</td>
-                    <td data-label="Actions">
+                    <td>{{ doc.description }}</td>
+                    <td>
                         <a href="{{ url_for('main.editDocument', doc_id=doc.id) }}" class="btn-action btn-edit">
                             <i class="material-icons-outlined">edit</i>Edit
                         </a>
@@ -116,30 +127,24 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr>
-                    <td colspan="7" class="text-center py-4">No documents found.</td>
-                </tr>
+                <tr><td colspan="7" class="text-center py-4">No documents found.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 
     <!-- GRID VIEW -->
-    <div id="gridView" class="row d-none">
+    <div id="gridView" class="row d-none mt-3">
         {% for doc in documents %}
         <div class="col-md-4 mb-4">
-            <div class="card h-100">
-                <div class="card-body text-center">
+            <div class="card h-100 text-center">
+                <div class="card-body">
                     <img src="{{ url_for('static', filename='img/pdf-icon.png') }}" alt="PDF" class="img-fluid mb-3" style="width:60px;">
                     <h5 class="card-title">{{ doc.title }}</h5>
-                    <p class="text-muted">Date: 
-                        {% if doc.created_at %}
-                            {{ doc.created_at.strftime('%d-%m-%Y %I:%M %p') }}
-                        {% else %}
-                            N/A
-                        {% endif %}
+                    <p class="text-muted">
+                        {% if doc.created_at %}{{ doc.created_at.strftime('%d-%m-%Y %I:%M %p') }}{% else %}N/A{% endif %}
                     </p>
-                    <p>Category: {{ doc.category }} <br> Sub Category: {{ doc.sub_category }}</p>
+                    <p>Category: {{ doc.category }}<br>Sub Category: {{ doc.sub_category }}</p>
                     <a href="{{ doc.file_path }}" target="_blank" class="btn btn-sm btn-grd-primary mb-2">View</a>
                     <div class="dropdown d-inline-block">
                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -164,19 +169,29 @@
     </div>
 </div>
 
-<!-- Toggle Script -->
+<!-- Script for Toggle -->
 <script>
-    document.getElementById('listViewBtn').addEventListener('click', function() {
-        document.getElementById('listView').classList.remove('d-none');
-        document.getElementById('gridView').classList.add('d-none');
+    const listTab = document.getElementById('listTab');
+    const gridTab = document.getElementById('gridTab');
+    const listView = document.getElementById('listView');
+    const gridView = document.getElementById('gridView');
+
+    listTab.addEventListener('click', function() {
+        listView.classList.remove('d-none');
+        gridView.classList.add('d-none');
+        listTab.classList.add('active');
+        gridTab.classList.remove('active');
     });
 
-    document.getElementById('gridViewBtn').addEventListener('click', function() {
-        document.getElementById('gridView').classList.remove('d-none');
-        document.getElementById('listView').classList.add('d-none');
+    gridTab.addEventListener('click', function() {
+        gridView.classList.remove('d-none');
+        listView.classList.add('d-none');
+        gridTab.classList.add('active');
+        listTab.classList.remove('active');
     });
 </script>
 {% endblock %}
+
 
 
 
