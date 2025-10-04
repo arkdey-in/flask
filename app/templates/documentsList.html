@@ -1,261 +1,666 @@
-
-
-
-
-
-
-
-
-
-
-
-
-{% extends "base.html" %}
-
-{% block title %}Document List | ARCHIVES OF CABINET AFFAIRS DEPARTMENT{% endblock %}
-
-{% block content %}
-
-<div class="container-fluid-custom">
-  <div class="page-header">
-    <h1>Documents List</h1>
-    <a href="{{ url_for('main.uploadDocument') }}" class="btn-add-new">
-      <span class="material-icons-outlined">add</span> Add New Document
-    </a>
-  </div>
-
-  <div class="breadcrumb">
-    <a href="{{ url_for('main.admDashboard') }}">Dashboard</a> &raquo;
-    <span>Documents</span>
-  </div>
-
-  {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-  <div class="alert-messages-container">
-    {% for category, message in messages %}
-    <div role="alert" class="alert-message {{ category }}">
-      <span>{{ message }}</span>
-      <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';" aria-label="Close">
-        &times;
-      </button>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-  {% endwith %}
-
-  <div class="filter-card">
-    <form method="GET" action="{{ url_for('main.documentList') }}">
-      <div class="row">
-        <div class="col-md-4 mb-3">
-          <label for="category_filter" class="form-label">Select Category</label>
-          <select id="category_filter" name="category" class="form-control" onchange="this.form.submit()">
-            <option value>All Categories</option>
-            {% for cat in distinct_categories %}
-            <option value="{{ cat }}" {% if current_filters.category==cat %}selected{% endif %}>{{ cat }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-4 mb-3">
-          <label for="subcategory_filter" class="form-label">Select Sub Category</label>
-          <select id="subcategory_filter" name="sub_category" class="form-control" onchange="this.form.submit()">
-            <option value>All Sub Categories</option>
-            {% for sub_cat in distinct_sub_categories %}
-            <option value="{{ sub_cat }}" {% if current_filters.sub_category==sub_cat %}selected{% endif %}>{{ sub_cat }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-4 mb-3">
-          <label for="tags_filter" class="form-label">Choose Tags</label>
-          <select id="tags_filter" name="tags" class="form-control" onchange="this.form.submit()">
-            <option value>All Tags</option>
-            {% for tag in distinct_tags %}
-            <option value="{{ tag }}" {% if current_filters.tags==tag %}selected{% endif %}>{{ tag }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
-      <div class="text-center my-2">OR</div>
-      <div class="input-group">
-        <input type="search" name="search" class="form-control form-control-lg"
-          placeholder="Enter Search Term (e.g. Title, Category, or Tag Name)"
-          value="{{ current_filters.search }}">
-        <button type="submit" class="btn btn-primary" style="padding: 0 2rem;">Apply Filters</button>
-      </div>
-    </form>
-  </div>
-
-  <div class="view-toggle-card">
-    <div class="view-toggle">
-      <button class="toggle-btn active" data-target="#listView">
-        <span class="material-icons-outlined">list</span> List View
-      </button>
-      <button class="toggle-btn" data-target="#gridView">
-        <span class="material-icons-outlined">grid_view</span> Grid View
-      </button>
-    </div>
-  </div>
-
-  <div>
-    <div id="listView" class="view-pane active">
-      <div class="category-list-table-card">
-        <table class="category-list-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Title</th>
-              <th>Category</th>
-              <th>Sub Category</th>
-              <th>File</th>
-              <th>Description</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for doc in documents %}
-            <tr>
-              <td>
-                {% if doc.created_at %}
-                {{ doc.created_at.strftime('%d-%m-%Y %I:%M %p') }}
-                {% else %}
-                N/A
-                {% endif %}
-              </td>
-              <td data-label="Title">{{ doc.title }}</td>
-              <td data-label="Category">{{ doc.category }}</td>
-              <td data-label="Sub Category">{{ doc.sub_category }}</td>
-              <td data-label="File">
-                <a href="{{ doc.file_path }}" target="_blank" class="btn-action btn-view btn-sm">
-                  <i class="material-icons-outlined">visibility</i> View
-                </a>
-              </td>
-              <td data-label="Description">{{ doc.description }}</td>
-              <td data-label="Actions">
-                <a href="{{ url_for('main.editDocument', doc_id=doc.id) }}" class="btn-action btn-edit">
-                  <i class="material-icons-outlined">edit</i>Edit
-                </a>
-                <form action="{{ url_for('main.deleteDocument', doc_id=doc.id) }}" method="POST" class="d-inline-block"
-                  onsubmit="return confirm('Are you sure you want to delete this document?');">
-                  <button type="submit" class="btn-action btn-delete">
-                    <i class="material-icons-outlined">delete</i>Delete
-                  </button>
-                </form>
-              </td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="7" class="text-center py-4">No documents found.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="gridView" class="view-pane">
-      <div class="row g-4">
-        {% for doc in documents %}
-        <div class="col-12 col-md-6 col-lg-4 col-xl-3 d-flex">
-          <div class="doc-card">
-            <div class="card-icon">
-              <span class="material-icons-outlined">picture_as_pdf</span>
-            </div>
-            <div class="card-body">
-              <h5 title="{{ doc.title }}">{{ doc.title }}</h5>
-              <p class="text-muted small mb-2">
-                {% if doc.created_at %}
-                  {{ doc.created_at.strftime('%d-%m-%Y %I:%M %p') }}
-                {% endif %}
-              </p>
-              <div class="card-meta">
-                <p><strong>Category:</strong> {{ doc.category }}</p>
-                <p><strong>Sub Category:</strong> {{ doc.sub_category }}</p>
-              </div>
-            </div>
-            <div class="card-footer">
-              <a href="{{ doc.file_path }}" target="_blank" class="btn-view-grid">View</a>
-              <div class="actions-dropdown">
-                <button class="btn-actions-grid dropdown-toggle">Actions</button>
-                <div class="dropdown-menu">
-                  <a href="{{ url_for('main.editDocument', doc_id=doc.id) }}" class="dropdown-item">
-                    <span class="material-icons-outlined">edit</span> Edit
-                  </a>
-                  <div class="dropdown-item dropdown-item-delete">
-                    <form action="{{ url_for('main.deleteDocument', doc_id=doc.id) }}" method="POST"
-                      onsubmit="return confirm('Are you sure you want to delete this document?');">
-                      <button type="submit">
-                        <span class="material-icons-outlined">delete</span> Delete
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        {% else %}
-        <div class="col-12">
-            <div class="alert alert-info text-center">No documents found.</div>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  // Logic for Toggling List/Grid View
-  const toggleButtons = document.querySelectorAll('.toggle-btn');
-  const viewPanes = document.querySelectorAll('.view-pane');
-
-  toggleButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const target = button.dataset.target;
-
-      // Update button active state
-      toggleButtons.forEach(btn => btn.classList.remove('active'));
-      button.classList.add('active');
-      
-      // Update pane visibility
-      viewPanes.forEach(pane => {
-        if ('#' + pane.id === target) {
-          pane.classList.add('active');
-        } else {
-          pane.classList.remove('active');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document List | ARCHIVES OF CABINET AFFAIRS DEPARTMENT</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-      });
-    });
-  });
 
-  // Logic for Actions Dropdown in Grid View
-  const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
-  
-  dropdownToggles.forEach(toggle => {
-      toggle.addEventListener('click', function(event) {
-          event.stopPropagation();
-          // Close other open dropdowns
-          closeAllDropdowns(this);
-          // Toggle the current one
-          this.nextElementSibling.classList.toggle('show');
-      });
-  });
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
 
-  // Close dropdowns when clicking anywhere else on the page
-  window.addEventListener('click', function(event) {
-      if (!event.target.matches('.dropdown-toggle')) {
-          closeAllDropdowns();
-      }
-  });
+        .container-fluid-custom {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
 
-  function closeAllDropdowns(exceptThisOne = null) {
-      document.querySelectorAll('.dropdown-menu').forEach(menu => {
-          if (exceptThisOne === null || menu.previousElementSibling !== exceptThisOne) {
-              menu.classList.remove('show');
-          }
-      });
-  }
-});
-</script>
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
 
-{% endblock %}
+        .breadcrumb {
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+
+        .breadcrumb a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .alert-messages-container {
+            margin-bottom: 20px;
+        }
+
+        .alert-message {
+            padding: 12px 15px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .alert-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: inherit;
+        }
+
+        .add-category-form-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -10px;
+        }
+
+        .col-md-4 {
+            flex: 0 0 33.333%;
+            padding: 0 10px;
+        }
+
+        .mb-3 {
+            margin-bottom: 15px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+
+        .input-group {
+            display: flex;
+            margin-top: 10px;
+        }
+
+        .input-group .form-control {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-grd-primary {
+            background: linear-gradient(to right, #3498db, #2980b9);
+            color: white;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+        }
+
+        .btn-grd-primary:hover {
+            background: linear-gradient(to right, #2980b9, #2573a7);
+        }
+
+        /* View Toggle Styles */
+        .view-toggle-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .view-toggle-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .view-toggle-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .view-toggle-btn.active {
+            background-color: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+        .view-toggle-btn:hover:not(.active) {
+            background-color: #e9ecef;
+        }
+
+        .entries-info {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        /* View Sections */
+        .view-section {
+            display: none;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        /* List View Styles */
+        .category-list-table-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .category-list-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .category-list-table th {
+            background-color: #f8f9fa;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .category-list-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .category-list-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .category-list-table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-view {
+            background-color: #e8f4fd;
+            color: #3498db;
+        }
+
+        .btn-view:hover {
+            background-color: #d1ecf1;
+        }
+
+        .btn-edit {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .btn-edit:hover {
+            background-color: #ffeaa7;
+        }
+
+        .btn-delete {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .btn-delete:hover {
+            background-color: #f1b0b7;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        .d-inline-block {
+            display: inline-block;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .py-4 {
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
+        /* Grid View Styles */
+        .document-grid-container {
+            margin-top: 0;
+        }
+
+        .document-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .document-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .document-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            transform: translateY(-2px);
+        }
+
+        .document-card-header {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            background-color: #f8f9fa;
+        }
+
+        .document-title {
+            margin: 0 0 5px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .document-date {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .document-card-body {
+            padding: 15px;
+        }
+
+        .document-info {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .info-row {
+            display: flex;
+        }
+
+        .info-label {
+            font-weight: 600;
+            min-width: 110px;
+            color: #555;
+            font-size: 13px;
+        }
+
+        .info-value {
+            flex: 1;
+            color: #333;
+            font-size: 13px;
+        }
+
+        .document-card-footer {
+            padding: 15px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .no-documents-grid {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            background: white;
+            border-radius: 8px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .col-md-4 {
+                flex: 0 0 100%;
+            }
+            
+            .view-toggle-container {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+
+            .document-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .category-list-table {
+                display: block;
+                overflow-x: auto;
+            }
+            
+            .info-row {
+                flex-direction: column;
+                gap: 2px;
+            }
+            
+            .info-label {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid-custom">
+        <h1>Document List</h1>
+        <div class="breadcrumb">
+            <a href="#">Dashboard</a> &raquo;
+            <a href="#">Document List</a> &raquo;
+        </div>
+
+        <div class="alert-messages-container">
+            <!-- Example alert message -->
+            <div role="alert" class="alert-message success">
+                <span>Document updated successfully</span>
+                <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';" aria-label="Close">
+                    &times;
+                </button>
+            </div>
+        </div>
+
+        <div class="add-category-form-card">
+            <form method="GET" action="#">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <select name="category" class="form-control">
+                            <option value>-- Select Category --</option>
+                            <option value="Invoice">Invoice</option>
+                            <option value="Test">Test</option>
+                            <option value="Report">Report</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <select name="sub_category" class="form-control">
+                            <option value>-- Select Sub Category --</option>
+                            <option value="GST Invoice">GST Invoice</option>
+                            <option value="Test">Test</option>
+                            <option value="Monthly">Monthly</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <select name="tags" class="form-control">
+                            <option value>-- Choose Tags --</option>
+                            <option value="Important">Important</option>
+                            <option value="Archived">Archived</option>
+                            <option value="Pending">Pending</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <input type="search" name="search" class="form-control"
+                        placeholder="Search by keyword in Title, Description, Tags, or Extracted Data...">
+                    <button type="submit" class="btn btn-grd-primary">Search</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- View Toggle Buttons -->
+        <div class="view-toggle-container">
+            <div class="view-toggle-buttons">
+                <button id="listViewBtn" class="view-toggle-btn active" onclick="toggleView('list')">
+                    <span class="material-icons-outlined">view_list</span> List View
+                </button>
+                <button id="gridViewBtn" class="view-toggle-btn" onclick="toggleView('grid')">
+                    <span class="material-icons-outlined">grid_view</span> Grid View
+                </button>
+            </div>
+            <div class="entries-info">
+                <span>Showing 2 entries</span>
+            </div>
+        </div>
+
+        <!-- List View -->
+        <div id="listView" class="category-list-table-card view-section active">
+            <table class="category-list-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Sub Category</th>
+                        <th>File</th>
+                        <th>Description</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>11-07-2025 07:40 PM</td>
+                        <td data-label="Title">GST Invoice for xyz client</td>
+                        <td data-label="Category">Invoice</td>
+                        <td data-label="Sub Category">GST Invoice</td>
+                        <td data-label="File">
+                            <p class="mb-1">invoice_xyz.pdf</p>
+                            <a href="#" target="_blank" class="btn-action btn-view btn-sm">
+                                <span class="material-icons-outlined">visibility</span> View
+                            </a>
+                        </td>
+                        <td data-label="Description">Jijiji'</td>
+                        <td data-label="Actions">
+                            <a href="#" class="btn-action btn-edit">
+                                <span class="material-icons-outlined">edit</span> Edit
+                            </a>
+                            <form action="#" method="POST" class="d-inline-block"
+                                onsubmit="return confirm('Are you sure you want to delete this document?');">
+                                <button type="submit" class="btn-action btn-delete">
+                                    <span class="material-icons-outlined">delete</span> Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>11-07-2025 12:31 PM</td>
+                        <td data-label="Title">Test Doc</td>
+                        <td data-label="Category">Test</td>
+                        <td data-label="Sub Category">Test</td>
+                        <td data-label="File">
+                            <p class="mb-1">test_document.pdf</p>
+                            <a href="#" target="_blank" class="btn-action btn-view btn-sm">
+                                <span class="material-icons-outlined">visibility</span> View
+                            </a>
+                        </td>
+                        <td data-label="Description">Test Document</td>
+                        <td data-label="Actions">
+                            <a href="#" class="btn-action btn-edit">
+                                <span class="material-icons-outlined">edit</span> Edit
+                            </a>
+                            <form action="#" method="POST" class="d-inline-block"
+                                onsubmit="return confirm('Are you sure you want to delete this document?');">
+                                <button type="submit" class="btn-action btn-delete">
+                                    <span class="material-icons-outlined">delete</span> Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Grid View -->
+        <div id="gridView" class="document-grid-container view-section">
+            <div class="document-grid">
+                <div class="document-card">
+                    <div class="document-card-header">
+                        <h3 class="document-title">GST Invoice for xyz client</h3>
+                        <div class="document-date">11-07-2025 07:40 PM</div>
+                    </div>
+                    <div class="document-card-body">
+                        <div class="document-info">
+                            <div class="info-row">
+                                <span class="info-label">Category:</span>
+                                <span class="info-value">Invoice</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Sub Category:</span>
+                                <span class="info-value">GST Invoice</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">File:</span>
+                                <span class="info-value">invoice_xyz.pdf</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Description:</span>
+                                <span class="info-value">Jijiji'</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="document-card-footer">
+                        <a href="#" target="_blank" class="btn-action btn-view">
+                            <span class="material-icons-outlined">visibility</span> View
+                        </a>
+                        <a href="#" class="btn-action btn-edit">
+                            <span class="material-icons-outlined">edit</span> Edit
+                        </a>
+                        <form action="#" method="POST" class="d-inline-block"
+                            onsubmit="return confirm('Are you sure you want to delete this document?');">
+                            <button type="submit" class="btn-action btn-delete">
+                                <span class="material-icons-outlined">delete</span> Delete
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="document-card">
+                    <div class="document-card-header">
+                        <h3 class="document-title">Test Doc</h3>
+                        <div class="document-date">11-07-2025 12:31 PM</div>
+                    </div>
+                    <div class="document-card-body">
+                        <div class="document-info">
+                            <div class="info-row">
+                                <span class="info-label">Category:</span>
+                                <span class="info-value">Test</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Sub Category:</span>
+                                <span class="info-value">Test</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">File:</span>
+                                <span class="info-value">test_document.pdf</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Description:</span>
+                                <span class="info-value">Test Document</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="document-card-footer">
+                        <a href="#" target="_blank" class="btn-action btn-view">
+                            <span class="material-icons-outlined">visibility</span> View
+                        </a>
+                        <a href="#" class="btn-action btn-edit">
+                            <span class="material-icons-outlined">edit</span> Edit
+                        </a>
+                        <form action="#" method="POST" class="d-inline-block"
+                            onsubmit="return confirm('Are you sure you want to delete this document?');">
+                            <button type="submit" class="btn-action btn-delete">
+                                <span class="material-icons-outlined">delete</span> Delete
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleView(viewType) {
+            // Hide all view sections
+            document.querySelectorAll('.view-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected view and activate corresponding button
+            document.getElementById(viewType + 'View').classList.add('active');
+            document.getElementById(viewType + 'ViewBtn').classList.add('active');
+            
+            // Save preference to localStorage
+            localStorage.setItem('preferredView', viewType);
+        }
+
+        // Initialize view on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedView = localStorage.getItem('preferredView') || 'list';
+            toggleView(savedView);
+        });
+    </script>
+</body>
+</html>
