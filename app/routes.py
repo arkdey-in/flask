@@ -78,7 +78,7 @@ main = Blueprint("main", __name__)
 #         region_name=current_app.config.get("AWS_REGION"),
 #     )
 
-# REPLACE the old function with this one
+
 def get_s3_client():
     """
     Initializes and returns the Boto3 S3 client.
@@ -134,7 +134,6 @@ def get_s3_client():
 #         current_app.logger.error(f"Error uploading to S3: {e}")
 #         return None
 
-# REPLACE the old function with this one
 def upload_file_to_s3(file_obj, bucket_name, object_name):
     """Uploads a file object to S3."""
     s3_client = get_s3_client()
@@ -728,6 +727,74 @@ def get_dashboard_stats():
 
     return stats
 
+
+
+
+
+
+#For searching
+
+def is_document_relevant_openai(user_query, document_json):
+    """
+    Asks OpenAI if a document's extracted data is relevant to a user's query.
+    Returns True if relevant, False otherwise.
+    """
+    openai.api_key = current_app.config.get("OPENAI_API_KEY")
+    if not openai.api_key:
+        current_app.logger.error("OpenAI API key not configured for AI search.")
+        return False
+
+    # To save tokens and time, we just use the raw text content for the check.
+    # We can reconstruct a simplified text version from the JSON.
+    try:
+        data = json.loads(document_json)
+        # Attempt to find the most content-rich part of the JSON.
+        # This part might need adjustment based on your exact JSON structure.
+        document_text = json.dumps(data.get("extracted_data", data))
+    except (json.JSONDecodeError, TypeError):
+        # If it's not valid JSON or not a string, use it as is.
+        document_text = str(document_json)
+
+
+    # Truncate document text to avoid exceeding token limits and reduce costs.
+    # 12000 chars is ~3000 tokens, a safe limit for a quick check.
+    max_chars = 12000
+    if len(document_text) > max_chars:
+        document_text = document_text[:max_chars] + "..."
+
+    prompt = f"""
+    You are an intelligent document analysis assistant. Your task is to determine if the provided document text contains information that directly answers or relates to the user's query.
+
+    User's Query: "{user_query}"
+
+    Document's Extracted Data (in JSON format):
+    ---
+    {document_text}
+    ---
+
+    Based ONLY on the document's data provided, does it contain a relevant answer to the user's query?
+    For example, if the query is "customer name is John", the document must contain "John".
+    If the query is "find invoices over 5000", the document must contain an invoice with an amount over 5000.
+
+    Respond with a single word and nothing else: 'Yes' or 'No'.
+    """
+
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-4o",  # Using a powerful model for better accuracy
+            messages=[
+                {"role": "system", "content": "You are a document analysis assistant that responds with only 'Yes' or 'No'."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=5,    # We only need a single word response
+            temperature=0.0  # We want a deterministic, factual answer
+        )
+        answer = response.choices[0].message.content.strip().lower()
+        # Check if 'yes' is in the answer for robustness
+        return 'yes' in answer
+    except Exception as e:
+        current_app.logger.error(f"OpenAI API call failed during AI search: {e}")
+        return False
 
 # ---------------------------------------------------------------------
 # Decorators
@@ -2364,6 +2431,79 @@ def submitDocument():
 #         current_filters=current_filters,
 #     )
 
+# @main.route("/documents/list")
+# @adm_login_required
+# @subadmin_permission_required("DOCUMENTS.view_documents")
+# def documentList():
+#     search_query = request.args.get("search", "")
+#     category_filter = request.args.get("category", "")
+#     sub_category_filter = request.args.get("sub_category", "")
+#     tags_filter = request.args.get("tags", "")
+
+#     connection = get_db_connection()
+#     documents = []
+#     distinct_categories = []
+#     distinct_sub_categories = []
+#     distinct_tags = []
+#     try:
+#         with connection.cursor() as cursor:
+#             # CORRECTED: Removed DATE_FORMAT from the SQL query
+#             base_sql = "SELECT id, title, category, sub_category, tags, description, file_path, created_at FROM documents"
+#             conditions, params = [], []
+
+#             if search_query:
+#                 search_like = f"%{search_query}%"
+#                 conditions.append(
+#                     "(title LIKE %s OR description LIKE %s OR tags LIKE %s OR CAST(extracted_data AS CHAR) LIKE %s)"
+#                 )
+#                 params.extend([search_like, search_like, search_like, search_like])
+#             if category_filter:
+#                 conditions.append("category = %s")
+#                 params.append(category_filter)
+#             if sub_category_filter:
+#                 conditions.append("sub_category = %s")
+#                 params.append(sub_category_filter)
+#             if tags_filter:
+#                 conditions.append("tags = %s")
+#                 params.append(tags_filter)
+
+#             if conditions:
+#                 base_sql += " WHERE " + " AND ".join(conditions)
+#             base_sql += " ORDER BY created_at DESC"
+
+#             cursor.execute(base_sql, tuple(params))
+#             documents = cursor.fetchall()
+
+#             # These other queries are fine
+#             cursor.execute("SELECT DISTINCT category FROM documents WHERE category IS NOT NULL AND category != '' ORDER BY category")
+#             distinct_categories = [row["category"] for row in cursor.fetchall()]
+#             cursor.execute("SELECT DISTINCT sub_category FROM documents WHERE sub_category IS NOT NULL AND sub_category != '' ORDER BY sub_category")
+#             distinct_sub_categories = [row["sub_category"] for row in cursor.fetchall()]
+#             cursor.execute("SELECT DISTINCT tags FROM documents WHERE tags IS NOT NULL AND tags != '' ORDER BY tags")
+#             distinct_tags = [row["tags"] for row in cursor.fetchall()]
+#     except Exception as e:
+#         current_app.logger.error(f"Error fetching document list: {e}")
+#         flash("An error occurred while fetching documents.", "danger")
+#     finally:
+#         connection.close()
+
+#     current_filters = {
+#         "search": search_query,
+#         "category": category_filter,
+#         "sub_category": sub_category_filter,
+#         "tags": tags_filter,
+#     }
+#     return render_template(
+#         "documentsList.html",
+#         documents=documents,
+#         distinct_categories=distinct_categories,
+#         distinct_sub_categories=distinct_sub_categories,
+#         distinct_tags=distinct_tags,
+#         current_filters=current_filters,
+#     )
+
+# --- REPLACE your old documentList function with this one ---
+
 @main.route("/documents/list")
 @adm_login_required
 @subadmin_permission_required("DOCUMENTS.view_documents")
@@ -2372,48 +2512,83 @@ def documentList():
     category_filter = request.args.get("category", "")
     sub_category_filter = request.args.get("sub_category", "")
     tags_filter = request.args.get("tags", "")
+    # New: Check if the user wants to use AI search
+    ai_search_enabled = request.args.get("ai_search") == "true"
 
     connection = get_db_connection()
     documents = []
     distinct_categories = []
     distinct_sub_categories = []
     distinct_tags = []
+
     try:
-        with connection.cursor() as cursor:
-            # CORRECTED: Removed DATE_FORMAT from the SQL query
-            base_sql = "SELECT id, title, category, sub_category, tags, description, file_path, created_at FROM documents"
-            conditions, params = [], []
-
-            if search_query:
-                search_like = f"%{search_query}%"
-                conditions.append(
-                    "(title LIKE %s OR description LIKE %s OR tags LIKE %s OR CAST(extracted_data AS CHAR) LIKE %s)"
-                )
-                params.extend([search_like, search_like, search_like, search_like])
-            if category_filter:
-                conditions.append("category = %s")
-                params.append(category_filter)
-            if sub_category_filter:
-                conditions.append("sub_category = %s")
-                params.append(sub_category_filter)
-            if tags_filter:
-                conditions.append("tags = %s")
-                params.append(tags_filter)
-
-            if conditions:
-                base_sql += " WHERE " + " AND ".join(conditions)
-            base_sql += " ORDER BY created_at DESC"
-
-            cursor.execute(base_sql, tuple(params))
-            documents = cursor.fetchall()
-
-            # These other queries are fine
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            # The logic for fetching filter options remains the same
             cursor.execute("SELECT DISTINCT category FROM documents WHERE category IS NOT NULL AND category != '' ORDER BY category")
             distinct_categories = [row["category"] for row in cursor.fetchall()]
             cursor.execute("SELECT DISTINCT sub_category FROM documents WHERE sub_category IS NOT NULL AND sub_category != '' ORDER BY sub_category")
             distinct_sub_categories = [row["sub_category"] for row in cursor.fetchall()]
             cursor.execute("SELECT DISTINCT tags FROM documents WHERE tags IS NOT NULL AND tags != '' ORDER BY tags")
             distinct_tags = [row["tags"] for row in cursor.fetchall()]
+
+            # --- SEARCH LOGIC ---
+            # If AI Search is enabled AND there is a search query
+            if ai_search_enabled and search_query:
+                flash("AI search is active. This may take a moment...", "info")
+                
+                # 1. Fetch all documents' ID and extracted data to be analyzed
+                # Note: This could be slow on very large databases.
+                # Consider adding your other filters (category, etc.) here to reduce the search space.
+                cursor.execute("SELECT id, extracted_data FROM documents")
+                all_docs_for_ai = cursor.fetchall()
+                
+                matching_ids = []
+                for doc in all_docs_for_ai:
+                    # 2. For each document, ask OpenAI if it's relevant
+                    if is_document_relevant_openai(search_query, doc['extracted_data']):
+                        matching_ids.append(doc['id'])
+                
+                # 3. If any matches were found, fetch the full document details for display
+                if matching_ids:
+                    # Using a placeholder for a list of IDs
+                    format_strings = ','.join(['%s'] * len(matching_ids))
+                    sql = f"SELECT * FROM documents WHERE id IN ({format_strings}) ORDER BY created_at DESC"
+                    cursor.execute(sql, tuple(matching_ids))
+                    documents = cursor.fetchall()
+                else:
+                    # If AI found no matches, documents list will be empty
+                    documents = []
+
+            # --- Standard Keyword Search Logic (The original method) ---
+            else:
+                base_sql = "SELECT * FROM documents"
+                conditions, params = [], []
+
+                if search_query:
+                    search_like = f"%{search_query}%"
+                    conditions.append(
+                        "(title LIKE %s OR description LIKE %s OR tags LIKE %s OR CAST(extracted_data AS CHAR) LIKE %s OR original_filename LIKE %s)"
+                    )
+                    params.extend([search_like, search_like, search_like, search_like, search_like])
+                
+                # Filters are applied in both search modes
+                if category_filter:
+                    conditions.append("category = %s")
+                    params.append(category_filter)
+                if sub_category_filter:
+                    conditions.append("sub_category = %s")
+                    params.append(sub_category_filter)
+                if tags_filter:
+                    conditions.append("tags = %s")
+                    params.append(tags_filter)
+
+                if conditions:
+                    base_sql += " WHERE " + " AND ".join(conditions)
+                
+                base_sql += " ORDER BY created_at DESC"
+                cursor.execute(base_sql, tuple(params))
+                documents = cursor.fetchall()
+
     except Exception as e:
         current_app.logger.error(f"Error fetching document list: {e}")
         flash("An error occurred while fetching documents.", "danger")
@@ -2425,6 +2600,7 @@ def documentList():
         "category": category_filter,
         "sub_category": sub_category_filter,
         "tags": tags_filter,
+        "ai_search": ai_search_enabled, # Pass the AI search status to the template
     }
     return render_template(
         "documentsList.html",

@@ -77,6 +77,13 @@
                        value="{{ current_filters.search }}">
                 <button type="submit" class="btn btn-grd-primary">Apply Filters</button>
             </div>
+            <div class="form-check mt-2">
+    <input class="form-check-input" type="checkbox" name="ai_search" 
+           value="true" id="aiSearchCheck" {% if current_filters.ai_search %}checked{% endif %}>
+    <label class="form-check-label" for="aiSearchCheck">
+        <strong>Enable AI-Powered Search</strong> (Slower, but more accurate for complex questions like "find invoices over 10000")
+    </label>
+</div>
         </form>
     </div>
 
