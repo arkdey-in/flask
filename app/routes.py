@@ -2030,6 +2030,97 @@ def delete_tag(tag_id):
 
 
 
+# @main.route("/documents/add-new", methods=["GET", "POST"])
+# @adm_login_required
+# @subadmin_permission_required("DOCUMENTS.create_document")
+# def addNewDocuments():
+#     """
+#     Handles the initial form submission for document analysis.
+#     Performs OCR and AI analysis and returns the extracted data to the client.
+#     """
+#     if request.method == "POST":
+#         if "file" not in request.files:
+#             return jsonify({"error": "No file part in the request"}), 400
+#         file = request.files["file"]
+#         if file.filename == "":
+#             return jsonify({"error": "No file selected"}), 400
+
+#         form_data = request.form
+#         title = form_data.get("title")
+#         if not title:
+#             return jsonify({"error": "Title is a required field."}), 400
+
+#         filepath = None
+#         try:
+#             if file and allowed_file(file.filename):
+#                 original_filename = secure_filename(file.filename)
+                
+#                 # --- CHANGE: Generate a unique filename for storage ---
+#                 file_extension = os.path.splitext(original_filename)[1]
+#                 unique_filename = f"{uuid.uuid4().hex}{file_extension}"
+                
+#                 # Save the temp file with the unique name
+#                 filepath = os.path.join(
+#                     current_app.config["UPLOAD_FOLDER"], unique_filename
+#                 )
+#                 file.save(filepath)
+
+#                 # --- CHANGE: Store BOTH filenames in the session for the next step ---
+#                 session["processing_filepath"] = filepath
+#                 session["original_filename"] = original_filename          # For displaying to user
+#                 session["unique_filename_for_s3"] = unique_filename    # For saving to S3
+#                 session["form_data_for_submission"] = dict(form_data)
+
+#                 ocr_engine = form_data.get("ocr_engine", "azure")
+#                 session["form_data_for_submission"]['ocr_engine'] = ocr_engine
+
+#                 raw_text = ""
+#                 if ocr_engine == "tesseract":
+#                     mime_type = magic.from_file(filepath, mime=True)
+#                     raw_text = perform_tesseract_ocr(filepath, mime_type)
+#                 else:
+#                     raw_text = perform_azure_ocr(filepath)
+
+#                 if not raw_text.strip():
+#                     os.remove(filepath)
+#                     session.pop("processing_filepath", None)
+#                     return jsonify({"error": "OCR failed to extract any text from the document."}), 400
+                
+#                 token_count = len(raw_text.split())
+#                 session['form_data_for_submission']['token_count'] = token_count
+
+#                 log_user_activity(
+#                     session.get("admin_id") or session.get("subadmin_id"),
+#                     session.get("admin_name") or session.get("subadmin_name"),
+#                     session.get("user_type"),
+#                     "File Upload",
+#                     "Documents/Add New",
+#                     f"Uploaded document '{original_filename}' for analysis."
+#                 )
+
+#                 analysis_result = analyze_document_with_openai(raw_text)
+#                 return jsonify(
+#                     {
+#                         "message": "Document analyzed successfully. Please review and save.",
+#                         "extracted_data": analysis_result,
+#                     }
+#                 )
+#             else:
+#                 return jsonify({"error": "File type not allowed"}), 400
+#         except ConnectionError as e:
+#             if filepath and os.path.exists(filepath):
+#                 os.remove(filepath)
+#             return jsonify({"error": str(e)}), 500
+#         except Exception as e:
+#             if filepath and os.path.exists(filepath):
+#                 os.remove(filepath)
+#             current_app.logger.error(f"An unexpected error occurred: {e}")
+#             return jsonify({"error": "An internal error occurred. Please try again later."}), 500
+
+#     return render_template("addNewDocuments.html")
+
+
+
 @main.route("/documents/add-new", methods=["GET", "POST"])
 @adm_login_required
 @subadmin_permission_required("DOCUMENTS.create_document")
@@ -2039,6 +2130,7 @@ def addNewDocuments():
     Performs OCR and AI analysis and returns the extracted data to the client.
     """
     if request.method == "POST":
+        # --- This POST logic remains unchanged ---
         if "file" not in request.files:
             return jsonify({"error": "No file part in the request"}), 400
         file = request.files["file"]
@@ -2054,21 +2146,14 @@ def addNewDocuments():
         try:
             if file and allowed_file(file.filename):
                 original_filename = secure_filename(file.filename)
-                
-                # --- CHANGE: Generate a unique filename for storage ---
                 file_extension = os.path.splitext(original_filename)[1]
                 unique_filename = f"{uuid.uuid4().hex}{file_extension}"
-                
-                # Save the temp file with the unique name
-                filepath = os.path.join(
-                    current_app.config["UPLOAD_FOLDER"], unique_filename
-                )
+                filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], unique_filename)
                 file.save(filepath)
 
-                # --- CHANGE: Store BOTH filenames in the session for the next step ---
                 session["processing_filepath"] = filepath
-                session["original_filename"] = original_filename          # For displaying to user
-                session["unique_filename_for_s3"] = unique_filename    # For saving to S3
+                session["original_filename"] = original_filename
+                session["unique_filename_for_s3"] = unique_filename
                 session["form_data_for_submission"] = dict(form_data)
 
                 ocr_engine = form_data.get("ocr_engine", "azure")
@@ -2099,12 +2184,10 @@ def addNewDocuments():
                 )
 
                 analysis_result = analyze_document_with_openai(raw_text)
-                return jsonify(
-                    {
-                        "message": "Document analyzed successfully. Please review and save.",
-                        "extracted_data": analysis_result,
-                    }
-                )
+                return jsonify({
+                    "message": "Document analyzed successfully. Please review and save.",
+                    "extracted_data": analysis_result,
+                })
             else:
                 return jsonify({"error": "File type not allowed"}), 400
         except ConnectionError as e:
@@ -2117,7 +2200,35 @@ def addNewDocuments():
             current_app.logger.error(f"An unexpected error occurred: {e}")
             return jsonify({"error": "An internal error occurred. Please try again later."}), 500
 
-    return render_template("addNewDocuments.html")
+    # --- THIS GET LOGIC IS NEW ---
+    # On initial page load (GET request), fetch all options for the dropdowns
+    connection = get_db_connection()
+    all_categories = []
+    all_subcategories = []
+    all_tags = []
+    try:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("SELECT category_name FROM categories ORDER BY category_name ASC")
+            all_categories = cursor.fetchall()
+            cursor.execute("SELECT sub_category_name FROM sub_categories ORDER BY sub_category_name ASC")
+            all_subcategories = cursor.fetchall()
+            cursor.execute("SELECT tag_name FROM tags ORDER BY tag_name ASC")
+            all_tags = cursor.fetchall()
+    except Exception as e:
+        current_app.logger.error(f"Error fetching dropdown data for add new page: {e}")
+        flash("Could not load dropdown options.", "danger")
+    finally:
+        if connection:
+            connection.close()
+    
+    return render_template(
+        "addNewDocuments.html", 
+        categories=all_categories,
+        subcategories=all_subcategories,
+        tags=all_tags
+    )
+
+
 
 
 # @main.route("/documents/submit", methods=["POST"])
@@ -2763,6 +2874,96 @@ def api_search_documents():
 #     return redirect(url_for("main.documentList"))
 
 
+# @main.route("/documents/edit/<int:doc_id>", methods=["GET", "POST"])
+# @adm_login_required
+# @subadmin_permission_required("DOCUMENTS.edit_document")
+# def editDocument(doc_id):
+#     connection = get_db_connection()
+#     try:
+#         if request.method == "POST":
+#             form_data = request.form
+#             title = form_data.get("title")
+#             extracted_data_str = form_data.get("extracted_data")
+
+#             if not title:
+#                 flash("Title is a required field.", "error")
+#                 # Refetch doc data to repopulate the form on error
+#                 with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+#                     cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
+#                     doc = cursor.fetchone()
+#                 return render_template("editDocument.html", doc=doc)
+
+#             # Validate if the extracted_data is valid JSON before saving
+#             try:
+#                 json.loads(extracted_data_str)
+#             except json.JSONDecodeError:
+#                 flash("Error: Extracted data is not in a valid JSON format.", "danger")
+#                 with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+#                     cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
+#                     doc = cursor.fetchone()
+#                     # Keep the user's invalid text to let them fix it
+#                     doc['extracted_data'] = extracted_data_str 
+#                 return render_template("editDocument.html", doc=doc)
+            
+#             with connection.cursor() as cursor:
+#                 # UPDATED SQL: Removed 'description' and added 'extracted_data'
+#                 sql = """
+#                     UPDATE documents
+#                     SET title = %s, category = %s, sub_category = %s, tags = %s, extracted_data = %s
+#                     WHERE id = %s
+#                 """
+#                 params = (
+#                     title,
+#                     form_data.get("category"),
+#                     form_data.get("sub_category"),
+#                     form_data.get("tags"),
+#                     extracted_data_str, # New data from the form
+#                     doc_id,
+#                 )
+#                 cursor.execute(sql, params)
+#             connection.commit()
+
+#             log_user_activity(
+#                 session.get("admin_id") or session.get("subadmin_id"),
+#                 session.get("admin_name") or session.get("subadmin_name"),
+#                 session.get("user_type"),
+#                 "Edit",
+#                 "Documents/Edit",
+#                 f"Edited document '{title}' with ID: {doc_id}"
+#             )
+
+#             flash("Document updated successfully!", "success")
+#             return redirect(url_for("main.documentList"))
+        
+#         else: # GET request
+#             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+#                 cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
+#                 doc = cursor.fetchone()
+#                 if not doc:
+#                     flash("Document not found.", "error")
+#                     return redirect(url_for("main.documentList"))
+                
+#                 # Pretty-print the JSON for better readability in the textarea
+#                 try:
+#                     parsed_json = json.loads(doc['extracted_data'])
+#                     doc['extracted_data'] = json.dumps(parsed_json, indent=4)
+#                 except (json.JSONDecodeError, TypeError):
+#                     # If data is not valid JSON, display it as is
+#                     pass
+                    
+#             return render_template("editDocument.html", doc=doc)
+
+#     except Exception as e:
+#         connection.rollback()
+#         current_app.logger.error(f"An unexpected error occurred: {e}")
+#         flash("An error occurred while editing the document.", "danger")
+#         return redirect(url_for("main.documentList"))
+#     finally:
+#         if connection:
+#             connection.close()
+
+# REPLACE your existing editDocument function with this one
+
 @main.route("/documents/edit/<int:doc_id>", methods=["GET", "POST"])
 @adm_login_required
 @subadmin_permission_required("DOCUMENTS.edit_document")
@@ -2770,19 +2971,18 @@ def editDocument(doc_id):
     connection = get_db_connection()
     try:
         if request.method == "POST":
+            # --- This POST logic remains unchanged ---
             form_data = request.form
             title = form_data.get("title")
             extracted_data_str = form_data.get("extracted_data")
 
             if not title:
                 flash("Title is a required field.", "error")
-                # Refetch doc data to repopulate the form on error
                 with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                     cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
                     doc = cursor.fetchone()
                 return render_template("editDocument.html", doc=doc)
 
-            # Validate if the extracted_data is valid JSON before saving
             try:
                 json.loads(extracted_data_str)
             except json.JSONDecodeError:
@@ -2790,57 +2990,55 @@ def editDocument(doc_id):
                 with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                     cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
                     doc = cursor.fetchone()
-                    # Keep the user's invalid text to let them fix it
                     doc['extracted_data'] = extracted_data_str 
                 return render_template("editDocument.html", doc=doc)
             
             with connection.cursor() as cursor:
-                # UPDATED SQL: Removed 'description' and added 'extracted_data'
-                sql = """
-                    UPDATE documents
-                    SET title = %s, category = %s, sub_category = %s, tags = %s, extracted_data = %s
-                    WHERE id = %s
-                """
-                params = (
-                    title,
-                    form_data.get("category"),
-                    form_data.get("sub_category"),
-                    form_data.get("tags"),
-                    extracted_data_str, # New data from the form
-                    doc_id,
-                )
+                sql = "UPDATE documents SET title = %s, category = %s, sub_category = %s, tags = %s, extracted_data = %s WHERE id = %s"
+                params = (title, form_data.get("category"), form_data.get("sub_category"), form_data.get("tags"), extracted_data_str, doc_id)
                 cursor.execute(sql, params)
             connection.commit()
 
             log_user_activity(
                 session.get("admin_id") or session.get("subadmin_id"),
                 session.get("admin_name") or session.get("subadmin_name"),
-                session.get("user_type"),
-                "Edit",
-                "Documents/Edit",
+                session.get("user_type"), "Edit", "Documents/Edit",
                 f"Edited document '{title}' with ID: {doc_id}"
             )
-
             flash("Document updated successfully!", "success")
             return redirect(url_for("main.documentList"))
         
-        else: # GET request
+        else: # --- THIS GET LOGIC IS UPDATED ---
             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+                # 1. Fetch the specific document to edit
                 cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
                 doc = cursor.fetchone()
                 if not doc:
                     flash("Document not found.", "error")
                     return redirect(url_for("main.documentList"))
                 
-                # Pretty-print the JSON for better readability in the textarea
+                # Pretty-print the JSON for readability
                 try:
                     parsed_json = json.loads(doc['extracted_data'])
                     doc['extracted_data'] = json.dumps(parsed_json, indent=4)
                 except (json.JSONDecodeError, TypeError):
-                    # If data is not valid JSON, display it as is
                     pass
+                
+                # 2. Fetch all options for the dropdowns
+                cursor.execute("SELECT category_name FROM categories ORDER BY category_name ASC")
+                all_categories = cursor.fetchall()
+                cursor.execute("SELECT sub_category_name FROM sub_categories ORDER BY sub_category_name ASC")
+                all_subcategories = cursor.fetchall()
+                cursor.execute("SELECT tag_name FROM tags ORDER BY tag_name ASC")
+                all_tags = cursor.fetchall()
                     
-            return render_template("editDocument.html", doc=doc)
+            return render_template(
+                "editDocument.html", 
+                doc=doc,
+                categories=all_categories,
+                subcategories=all_subcategories,
+                tags=all_tags
+            )
 
     except Exception as e:
         connection.rollback()
@@ -2851,6 +3049,7 @@ def editDocument(doc_id):
         if connection:
             connection.close()
 
+            
 @main.route("/documents/delete/<int:doc_id>", methods=["POST"])
 @adm_login_required
 @subadmin_permission_required("DOCUMENTS.delete_document")

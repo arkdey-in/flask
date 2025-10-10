@@ -2,8 +2,6 @@
 
 {% block title %}Add New Document | ARCHIVES OF CABINET AFFAIRS DEPARTMENT{% endblock %}
 
-
-
 {% block content %}
 <div class="container-fluid-custom">
     <h1>Add and Process New Document</h1>
@@ -19,18 +17,14 @@
             {% for category, message in messages %}
             <div role="alert" class="alert-message {{ category }}">
                 <span>{{ message }}</span>
-                <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';" aria-label="Close">
-                    &times;
-                </button>
+                <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';" aria-label="Close">&times;</button>
             </div>
             {% endfor %}
         </div>
         {% endif %}
     {% endwith %}
 
-    <div id="loader-overlay" class="hidden">
-        <h3>Analyzing Document... Please wait.</h3>
-    </div>
+    <div id="loader-overlay" class="hidden"><h3>Analyzing Document... Please wait.</h3></div>
 
     <div class="add-category-form-card">
         <form id="document-form" enctype="multipart/form-data">
@@ -43,25 +37,25 @@
                 <div class="col-md-6 mb-3">
                     <label for="category" class="form-label">Category</label>
                     <select id="category" name="category" class="form-control">
-                        <option value="invoices">Invoices</option>
-                        <option value="forms">Admission Forms</option>
-                        <option value="reports">Reports</option>
-                        <option value="other">Other</option>
+                        <option value="">-- Select a Category --</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.category_name }}">{{ cat.category_name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label for="sub_category" class="form-label">Sub-Category</label>
                     <select id="sub_category" name="sub_category" class="form-control">
-                        <option value="utility">Utility</option>
-                        <option value="vendor">Vendor</option>
-                        <option value="student">Student</option>
-                        <option value="internal">Internal</option>
+                        <option value="">-- Select a Sub-Category --</option>
+                        {% for subcat in subcategories %}
+                        <option value="{{ subcat.sub_category_name }}">{{ subcat.sub_category_name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
             </div>
 
             <div class="mb-3">
-                <label for="file-upload" class="form-label">Document File</label>
+                <label for="file-upload" class="form-label">Document File <span class="required">*</span></label>
                 <input type="file" id="file-upload" name="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
             </div>
 
@@ -69,9 +63,10 @@
                 <div class="col-md-6 mb-3">
                     <label for="tags" class="form-label">Tags</label>
                     <select id="tags" name="tags" class="form-control">
-                        <option value="financial">Financial</option>
-                        <option value="administrative">Administrative</option>
-                        <option value="confidential">Confidential</option>
+                        <option value="">-- Select a Tag --</option>
+                        {% for tag in tags %}
+                        <option value="{{ tag.tag_name }}">{{ tag.tag_name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="col-md-6 mb-3">
@@ -83,9 +78,7 @@
                 </div>
             </div>
 
-            <button type="button" id="analyze-button" class="btn btn-grd-primary px-4">
-                Analyze Document
-            </button>
+            <button type="button" id="analyze-button" class="btn btn-grd-primary px-4">Analyze Document</button>
         </form>
     </div>
 
@@ -96,13 +89,10 @@
                 <label for="extracted-text" class="form-label">Editable Extracted Text</label>
                 <textarea id="extracted-text" name="extracted_data" rows="10" class="form-control" placeholder="AI-extracted data will appear here..."></textarea>
             </div>
-            <button type="submit" class="btn btn-grd-primary px-4">
-                Save Document
-            </button>
+            <button type="submit" class="btn btn-grd-primary px-4">Save Document</button>
         </form>
     </div>
 </div>
-
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const loader = document.getElementById('loader-overlay');
