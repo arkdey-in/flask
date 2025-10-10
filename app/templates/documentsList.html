@@ -105,35 +105,36 @@
                 <h5 class="modal-title" id="documentViewerModalLabel">Document Viewer</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="documentViewerBody" style="height: 80vh;"></div>
+            <div class="modal-body" id="documentViewerBody" style="height: 80vh;">
+                </div>
         </div>
     </div>
 </div>
 
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         // --- Element Selectors ---
+        const tableBody = document.getElementById('document-table-body');
+        const gridView = document.getElementById('gridView');
+        const viewerModal = new bootstrap.Modal(document.getElementById('documentViewerModal'));
+        const modalTitle = document.getElementById('documentViewerModalLabel');
+        const modalBody = document.getElementById('documentViewerBody');
+        const modalElement = document.getElementById('documentViewerModal');
+        
+        // --- Other selectors and view toggler logic ---
         const filterForm = document.getElementById('filter-form');
         const searchInput = document.getElementById('search-input');
         const categoryFilter = document.getElementById('category-filter');
         const subcategoryFilter = document.getElementById('subcategory-filter');
         const tagsFilter = document.getElementById('tags-filter');
-
         const listTab = document.getElementById('listTab');
         const gridTab = document.getElementById('gridTab');
         const listView = document.getElementById('listView');
-        const gridView = document.getElementById('gridView');
-        const tableBody = document.getElementById('document-table-body');
-        
-        const viewerModal = new bootstrap.Modal(document.getElementById('documentViewerModal'));
-        const modalTitle = document.getElementById('documentViewerModalLabel');
-        const modalBody = document.getElementById('documentViewerBody');
-        const modalElement = document.getElementById('documentViewerModal');
-
-        // --- View Toggler Logic ---
         listTab.addEventListener('click', () => { listView.classList.remove('d-none'); gridView.classList.add('d-none'); listTab.classList.add('active'); gridTab.classList.remove('active'); });
         gridTab.addEventListener('click', () => { gridView.classList.remove('d-none'); listView.classList.add('d-none'); gridTab.classList.add('active'); listTab.classList.remove('active'); });
 
+        // --- Main Data Fetching and Rendering Function ---
         async function fetchAndRenderDocuments() {
             const params = new URLSearchParams({ search: searchInput.value, category: categoryFilter.value, sub_category: subcategoryFilter.value, tags: tagsFilter.value });
             tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Loading documents...</td></tr>';
@@ -152,8 +153,6 @@
                     gridView.innerHTML = '<div class="col-12 text-center py-4">No documents found.</div>';
                 } else {
                     documents.forEach(doc => {
-                        
-                        // --- JAVASCRIPT UPDATE 1: List View Row ---
                         const listRowHtml = `
                             <tr>
                                 <td>${doc.created_at || 'N/A'}</td>
@@ -164,27 +163,19 @@
                                 <td>
                                     <p class="mb-1">${doc.original_filename || 'N/A'}</p>
                                     <button type="button" class="btn-action btn-view btn-sm view-doc-btn" 
-                                            data-file-url="${doc.file_path}" 
-                                            data-file-title="${doc.title || 'Document'}">
+                                            data-file-url="${doc.file_path}" data-file-title="${doc.title || 'Document'}">
                                         <i class="material-icons-outlined">visibility</i> View
                                     </button>
                                 </td>
                                 <td>
-                                    <a href="/documents/edit/${doc.id}" class="btn-action btn-edit">
-                                        <i class="material-icons-outlined">edit</i>Edit
-                                    </a>
-                                    <form action="/documents/delete/${doc.id}" method="POST" class="d-inline-block"
-                                          onsubmit="return confirm('Are you sure you want to delete this document?');">
-                                        <button type="submit" class="btn-action btn-delete">
-                                            <i class="material-icons-outlined">delete</i>Delete
-                                        </button>
+                                    <a href="/documents/edit/${doc.id}" class="btn-action btn-edit"><i class="material-icons-outlined">edit</i>Edit</a>
+                                    <form action="/documents/delete/${doc.id}" method="POST" class="d-inline-block" onsubmit="return confirm('Are you sure you want to delete this document?');">
+                                        <button type="submit" class="btn-action btn-delete"><i class="material-icons-outlined">delete</i>Delete</button>
                                     </form>
                                 </td>
-                            </tr>
-                        `;
+                            </tr>`;
                         tableBody.insertAdjacentHTML('beforeend', listRowHtml);
 
-                        // --- JAVASCRIPT UPDATE 2: Grid View Card ---
                         const gridCardHtml = `
                             <div class="col-md-4 mb-4">
                                 <div class="card h-100 shadow-sm border-0">
@@ -198,28 +189,19 @@
                                             <strong>Tag:</strong> ${doc.tags || ''}
                                         </p>
                                         <button type="button" class="btn btn-sm btn-grd-primary mb-3 view-doc-btn" 
-                                                data-file-url="${doc.file_path}" 
-                                                data-file-title="${doc.title || 'Document'}">
+                                                data-file-url="${doc.file_path}" data-file-title="${doc.title || 'Document'}">
                                             View
                                         </button>
                                         <div class="dropdown">
-                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                Actions
-                                            </button>
+                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">Actions</button>
                                             <ul class="dropdown-menu">
                                                 <li><a class="dropdown-item" href="/documents/edit/${doc.id}">Edit</a></li>
-                                                <li>
-                                                    <form action="/documents/delete/${doc.id}" method="POST"
-                                                          onsubmit="return confirm('Are you sure you want to delete this document?');">
-                                                        <button type="submit" class="dropdown-item text-danger">Delete</button>
-                                                    </form>
-                                                </li>
+                                                <li><form action="/documents/delete/${doc.id}" method="POST" onsubmit="return confirm('Are you sure you want to delete this document?');"><button type="submit" class="dropdown-item text-danger">Delete</button></form></li>
                                             </ul>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        `;
+                            </div>`;
                         gridView.insertAdjacentHTML('beforeend', gridCardHtml);
                     });
                 }
@@ -230,34 +212,50 @@
             }
         }
 
-        // Modal Logic (No changes here)
+        // --- NEW MODAL LOGIC ---
         document.body.addEventListener('click', function(event) {
+            // Use event delegation to catch clicks on dynamically added buttons
             if (event.target.classList.contains('view-doc-btn') || event.target.closest('.view-doc-btn')) {
                 const button = event.target.closest('.view-doc-btn');
                 const fileUrl = button.dataset.fileUrl;
                 const fileTitle = button.dataset.fileTitle;
                 const fileExtension = fileUrl.split('.').pop().toLowerCase();
-                modalTitle.textContent = fileTitle;
-                modalBody.innerHTML = '';
+
+                modalTitle.textContent = fileTitle; // Set the modal title
+                modalBody.innerHTML = ''; // Clear previous content
+
                 let embedHtml = '';
-                if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(fileExtension)) {
+                // Check if it's an image
+                if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'img'].includes(fileExtension)) {
                     embedHtml = `<img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: contain;" alt="${fileTitle}">`;
-                } else if (fileExtension === 'pdf') {
+                } 
+                // Check if it's a PDF
+                else if (fileExtension === 'pdf') {
                     embedHtml = `<iframe src="${fileUrl}" style="width: 100%; height: 100%; border: none;"></iframe>`;
-                } else {
-                    embedHtml = `<div class="text-center p-5"><p>This file type (.${fileExtension}) cannot be previewed directly.</p><a href="${fileUrl}" class="btn btn-primary" target="_blank" download>Download File</a></div>`;
+                } 
+                // Fallback for other file types
+                else {
+                    embedHtml = `
+                        <div class="text-center p-5">
+                            <p>This file type (.${fileExtension}) cannot be previewed directly.</p>
+                            <a href="${fileUrl}" class="btn btn-primary" target="_blank" download>Download File</a>
+                        </div>
+                    `;
                 }
+
                 modalBody.innerHTML = embedHtml;
-                viewerModal.show();
+                viewerModal.show(); // Show the modal
             }
         });
-        modalElement.addEventListener('hidden.bs.modal', () => { modalBody.innerHTML = ''; });
+        
+        // Clean up the modal body when it's closed
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            modalBody.innerHTML = '';
+        });
 
-        // --- Event Listeners ---
+        // --- Event Listeners & Initial Load ---
         filterForm.addEventListener('submit', (event) => { event.preventDefault(); fetchAndRenderDocuments(); });
         [categoryFilter, subcategoryFilter, tagsFilter].forEach(filter => { filter.addEventListener('change', fetchAndRenderDocuments); });
-        
-        // --- Initial Load ---
         fetchAndRenderDocuments();
     });
 </script>
