@@ -156,6 +156,29 @@ def get_s3_client():
 #         current_app.logger.error(f"Error uploading to S3: {e}")
 #         return None
 
+# def upload_file_to_s3(file_obj, bucket_name, object_name):
+#     """Uploads a file object to S3."""
+#     s3_client = get_s3_client()
+#     try:
+#         content_type = getattr(file_obj, 'content_type', 'application/octet-stream')
+
+#         s3_client.upload_fileobj(
+#             file_obj,
+#             bucket_name,
+#             object_name,
+#             ExtraArgs={
+#                 "ContentType": content_type,
+#                 "ContentDisposition": "inline"  # <-- ADD THIS LINE
+#             }
+#         )
+
+#         aws_region = current_app.config.get("AWS_REGION")
+#         url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{object_name}"
+#         return url
+#     except ClientError as e:
+#         current_app.logger.error(f"Error uploading to S3: {e}")
+#         return None
+
 def upload_file_to_s3(file_obj, bucket_name, object_name):
     """Uploads a file object to S3."""
     s3_client = get_s3_client()
@@ -168,7 +191,7 @@ def upload_file_to_s3(file_obj, bucket_name, object_name):
             object_name,
             ExtraArgs={
                 "ContentType": content_type,
-                "ContentDisposition": "inline"  # <-- ADD THIS LINE
+                "ContentDisposition": "inline"  # <-- THIS LINE IS ESSENTIAL
             }
         )
 
