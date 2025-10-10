@@ -84,8 +84,8 @@
                     <th>Title</th>
                     <th>Category</th>
                     <th>Sub Category</th>
-                    <th>File</th>
-                    <th>Description</th>
+                    <th>Tag</th>
+                    <th>File-Name</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -96,6 +96,18 @@
 
     <div id="gridView" class="row d-none mt-3">
         </div>
+</div>
+
+<div class="modal fade" id="documentViewerModal" tabindex="-1" aria-labelledby="documentViewerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="documentViewerModalLabel">Document Viewer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="documentViewerBody" style="height: 80vh;"></div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -112,68 +124,51 @@
         const listView = document.getElementById('listView');
         const gridView = document.getElementById('gridView');
         const tableBody = document.getElementById('document-table-body');
+        
+        const viewerModal = new bootstrap.Modal(document.getElementById('documentViewerModal'));
+        const modalTitle = document.getElementById('documentViewerModalLabel');
+        const modalBody = document.getElementById('documentViewerBody');
+        const modalElement = document.getElementById('documentViewerModal');
 
         // --- View Toggler Logic ---
-        listTab.addEventListener('click', function() {
-            listView.classList.remove('d-none');
-            gridView.classList.add('d-none');
-            listTab.classList.add('active');
-            gridTab.classList.remove('active');
-        });
+        listTab.addEventListener('click', () => { listView.classList.remove('d-none'); gridView.classList.add('d-none'); listTab.classList.add('active'); gridTab.classList.remove('active'); });
+        gridTab.addEventListener('click', () => { gridView.classList.remove('d-none'); listView.classList.add('d-none'); gridTab.classList.add('active'); listTab.classList.remove('active'); });
 
-        gridTab.addEventListener('click', function() {
-            gridView.classList.remove('d-none');
-            listView.classList.add('d-none');
-            gridTab.classList.add('active');
-            listTab.classList.remove('active');
-        });
-
-        // --- Main Data Fetching and Rendering Function ---
         async function fetchAndRenderDocuments() {
-            // 1. Build the query string from form inputs
-            const params = new URLSearchParams({
-                search: searchInput.value,
-                category: categoryFilter.value,
-                sub_category: subcategoryFilter.value,
-                tags: tagsFilter.value
-            });
-
-            // Show a loading indicator
+            const params = new URLSearchParams({ search: searchInput.value, category: categoryFilter.value, sub_category: subcategoryFilter.value, tags: tagsFilter.value });
             tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Loading documents...</td></tr>';
             gridView.innerHTML = '<div class="col-12 text-center py-4">Loading documents...</div>';
 
             try {
-                // 2. Fetch data from the new API endpoint
                 const response = await fetch(`{{ url_for('main.api_search_documents') }}?${params.toString()}`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const documents = await response.json();
 
-                // 3. Clear existing content
                 tableBody.innerHTML = '';
                 gridView.innerHTML = '';
 
-                // 4. Render new content
                 if (documents.length === 0) {
                     tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">No documents found.</td></tr>';
                     gridView.innerHTML = '<div class="col-12 text-center py-4">No documents found.</div>';
                 } else {
                     documents.forEach(doc => {
-                        // Create List View Row
+                        
+                        // --- JAVASCRIPT UPDATE 1: List View Row ---
                         const listRowHtml = `
                             <tr>
                                 <td>${doc.created_at || 'N/A'}</td>
                                 <td>${doc.title || ''}</td>
                                 <td>${doc.category || ''}</td>
                                 <td>${doc.sub_category || ''}</td>
+                                <td>${doc.tags || ''}</td>
                                 <td>
                                     <p class="mb-1">${doc.original_filename || 'N/A'}</p>
-                                    <a href="${doc.file_path}" target="_blank" class="btn-action btn-view btn-sm">
+                                    <button type="button" class="btn-action btn-view btn-sm view-doc-btn" 
+                                            data-file-url="${doc.file_path}" 
+                                            data-file-title="${doc.title || 'Document'}">
                                         <i class="material-icons-outlined">visibility</i> View
-                                    </a>
+                                    </button>
                                 </td>
-                                <td>${doc.description || ''}</td>
                                 <td>
                                     <a href="/documents/edit/${doc.id}" class="btn-action btn-edit">
                                         <i class="material-icons-outlined">edit</i>Edit
@@ -189,7 +184,7 @@
                         `;
                         tableBody.insertAdjacentHTML('beforeend', listRowHtml);
 
-                        // Create Grid View Card
+                        // --- JAVASCRIPT UPDATE 2: Grid View Card ---
                         const gridCardHtml = `
                             <div class="col-md-4 mb-4">
                                 <div class="card h-100 shadow-sm border-0">
@@ -199,9 +194,14 @@
                                         <p class="text-muted small">${doc.created_at || 'N/A'}</p>
                                         <p class="mb-2">
                                             <strong>Category:</strong> ${doc.category || ''} <br>
-                                            <strong>Sub Category:</strong> ${doc.sub_category || ''}
+                                            <strong>Sub Category:</strong> ${doc.sub_category || ''} <br>
+                                            <strong>Tag:</strong> ${doc.tags || ''}
                                         </p>
-                                        <a href="${doc.file_path}" target="_blank" class="btn btn-sm btn-grd-primary mb-3">View</a>
+                                        <button type="button" class="btn btn-sm btn-grd-primary mb-3 view-doc-btn" 
+                                                data-file-url="${doc.file_path}" 
+                                                data-file-title="${doc.title || 'Document'}">
+                                            View
+                                        </button>
                                         <div class="dropdown">
                                             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                                 Actions
@@ -230,39 +230,42 @@
             }
         }
 
-        // --- Event Listeners ---
-        // On form submit (clicking button or pressing enter in search)
-        filterForm.addEventListener('submit', (event) => {
-            event.preventDefault(); // Prevent traditional page reload
-            fetchAndRenderDocuments();
+        // Modal Logic (No changes here)
+        document.body.addEventListener('click', function(event) {
+            if (event.target.classList.contains('view-doc-btn') || event.target.closest('.view-doc-btn')) {
+                const button = event.target.closest('.view-doc-btn');
+                const fileUrl = button.dataset.fileUrl;
+                const fileTitle = button.dataset.fileTitle;
+                const fileExtension = fileUrl.split('.').pop().toLowerCase();
+                modalTitle.textContent = fileTitle;
+                modalBody.innerHTML = '';
+                let embedHtml = '';
+                if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(fileExtension)) {
+                    embedHtml = `<img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: contain;" alt="${fileTitle}">`;
+                } else if (fileExtension === 'pdf') {
+                    embedHtml = `<iframe src="${fileUrl}" style="width: 100%; height: 100%; border: none;"></iframe>`;
+                } else {
+                    embedHtml = `<div class="text-center p-5"><p>This file type (.${fileExtension}) cannot be previewed directly.</p><a href="${fileUrl}" class="btn btn-primary" target="_blank" download>Download File</a></div>`;
+                }
+                modalBody.innerHTML = embedHtml;
+                viewerModal.show();
+            }
         });
+        modalElement.addEventListener('hidden.bs.modal', () => { modalBody.innerHTML = ''; });
 
-        // On any filter change
-        [categoryFilter, subcategoryFilter, tagsFilter].forEach(filter => {
-            filter.addEventListener('change', fetchAndRenderDocuments);
-        });
+        // --- Event Listeners ---
+        filterForm.addEventListener('submit', (event) => { event.preventDefault(); fetchAndRenderDocuments(); });
+        [categoryFilter, subcategoryFilter, tagsFilter].forEach(filter => { filter.addEventListener('change', fetchAndRenderDocuments); });
         
         // --- Initial Load ---
-        // Fetch and render documents when the page first loads
         fetchAndRenderDocuments();
     });
 </script>
 
 <style>
 /* Custom tabs styling */
-.custom-tabs .nav-link {
-    color: #555;
-    font-weight: 500;
-    border: none;
-    border-bottom: 2px solid transparent;
-    margin: 0 10px;
-}
-.custom-tabs .nav-link.active {
-    color: #007bff;
-    border-bottom: 2px solid #007bff;
-}
-.card {
-    border-radius: 10px;
-}
+.custom-tabs .nav-link { color: #555; font-weight: 500; border: none; border-bottom: 2px solid transparent; margin: 0 10px; }
+.custom-tabs .nav-link.active { color: #007bff; border-bottom: 2px solid #007bff; }
+.card { border-radius: 10px; }
 </style>
 {% endblock %}
