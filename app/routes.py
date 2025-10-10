@@ -2701,35 +2701,112 @@ def api_search_documents():
         
     return jsonify(documents)
 
+# @main.route("/documents/edit/<int:doc_id>", methods=["GET", "POST"])
+# @adm_login_required
+# @subadmin_permission_required("DOCUMENTS.edit_document")
+# def editDocument(doc_id):
+#     connection = get_db_connection()
+#     doc = None
+#     try:
+#         if request.method == "POST":
+#             form_data = request.form
+#             title = form_data.get("title")
+#             if not title:
+#                 flash("Title is a required field.", "error")
+#                 with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+#                     cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
+#                     doc = cursor.fetchone()
+#                 return render_template("editDocument.html", doc=doc)
+            
+#             with connection.cursor() as cursor:
+#                 sql = """
+#                     UPDATE documents
+#                     SET title = %s, category = %s, sub_category = %s, tags = %s, description = %s
+#                     WHERE id = %s
+#                 """
+#                 params = (
+#                     form_data.get("title"),
+#                     form_data.get("category"),
+#                     form_data.get("sub_category"),
+#                     form_data.get("tags"),
+#                     form_data.get("description"),
+#                     doc_id,
+#                 )
+#                 cursor.execute(sql, params)
+#             connection.commit()
+
+#             log_user_activity(
+#                 session.get("admin_id") or session.get("subadmin_id"),
+#                 session.get("admin_name") or session.get("subadmin_name"),
+#                 session.get("user_type"),
+#                 "Edit",
+#                 "Documents/Edit",
+#                 f"Edited document '{title}' with ID: {doc_id}"
+#             )
+
+#             flash("Document updated successfully!", "success")
+#             return redirect(url_for("main.documentList"))
+#         else:
+#             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+#                 cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
+#                 doc = cursor.fetchone()
+#                 if not doc:
+#                     flash("Document not found.", "error")
+#                     return redirect(url_for("main.documentList"))
+#             return render_template("editDocument.html", doc=doc)
+#     except Exception as e:
+#         connection.rollback()
+#         current_app.logger.error(f"An unexpected error occurred: {e}")
+#         flash("An error occurred while editing the document.", "danger")
+#     finally:
+#         connection.close()
+#     return redirect(url_for("main.documentList"))
+
+
 @main.route("/documents/edit/<int:doc_id>", methods=["GET", "POST"])
 @adm_login_required
 @subadmin_permission_required("DOCUMENTS.edit_document")
 def editDocument(doc_id):
     connection = get_db_connection()
-    doc = None
     try:
         if request.method == "POST":
             form_data = request.form
             title = form_data.get("title")
+            extracted_data_str = form_data.get("extracted_data")
+
             if not title:
                 flash("Title is a required field.", "error")
+                # Refetch doc data to repopulate the form on error
                 with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                     cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
                     doc = cursor.fetchone()
                 return render_template("editDocument.html", doc=doc)
+
+            # Validate if the extracted_data is valid JSON before saving
+            try:
+                json.loads(extracted_data_str)
+            except json.JSONDecodeError:
+                flash("Error: Extracted data is not in a valid JSON format.", "danger")
+                with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+                    cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
+                    doc = cursor.fetchone()
+                    # Keep the user's invalid text to let them fix it
+                    doc['extracted_data'] = extracted_data_str 
+                return render_template("editDocument.html", doc=doc)
             
             with connection.cursor() as cursor:
+                # UPDATED SQL: Removed 'description' and added 'extracted_data'
                 sql = """
                     UPDATE documents
-                    SET title = %s, category = %s, sub_category = %s, tags = %s, description = %s
+                    SET title = %s, category = %s, sub_category = %s, tags = %s, extracted_data = %s
                     WHERE id = %s
                 """
                 params = (
-                    form_data.get("title"),
+                    title,
                     form_data.get("category"),
                     form_data.get("sub_category"),
                     form_data.get("tags"),
-                    form_data.get("description"),
+                    extracted_data_str, # New data from the form
                     doc_id,
                 )
                 cursor.execute(sql, params)
@@ -2746,22 +2823,33 @@ def editDocument(doc_id):
 
             flash("Document updated successfully!", "success")
             return redirect(url_for("main.documentList"))
-        else:
+        
+        else: # GET request
             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                 cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
                 doc = cursor.fetchone()
                 if not doc:
                     flash("Document not found.", "error")
                     return redirect(url_for("main.documentList"))
+                
+                # Pretty-print the JSON for better readability in the textarea
+                try:
+                    parsed_json = json.loads(doc['extracted_data'])
+                    doc['extracted_data'] = json.dumps(parsed_json, indent=4)
+                except (json.JSONDecodeError, TypeError):
+                    # If data is not valid JSON, display it as is
+                    pass
+                    
             return render_template("editDocument.html", doc=doc)
+
     except Exception as e:
         connection.rollback()
         current_app.logger.error(f"An unexpected error occurred: {e}")
         flash("An error occurred while editing the document.", "danger")
+        return redirect(url_for("main.documentList"))
     finally:
-        connection.close()
-    return redirect(url_for("main.documentList"))
-
+        if connection:
+            connection.close()
 
 @main.route("/documents/delete/<int:doc_id>", methods=["POST"])
 @adm_login_required

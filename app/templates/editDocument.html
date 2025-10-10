@@ -40,22 +40,22 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label for="category" class="form-label">Category</label>
-                    <input type="text" id="category" name="category" class="form-control" value="{{ doc.category }}">
+                    <input type="text" id="category" name="category" class="form-control" value="{{ doc.category or '' }}">
                 </div>
                 <div class="col-md-6 mb-3">
                     <label for="sub_category" class="form-label">Sub-Category</label>
-                    <input type="text" id="sub_category" name="sub_category" class="form-control" value="{{ doc.sub_category }}">
+                    <input type="text" id="sub_category" name="sub_category" class="form-control" value="{{ doc.sub_category or '' }}">
                 </div>
             </div>
 
             <div class="mb-3">
                 <label for="tags" class="form-label">Tags</label>
-                <input type="text" id="tags" name="tags" class="form-control" value="{{ doc.tags }}">
+                <input type="text" id="tags" name="tags" class="form-control" value="{{ doc.tags or '' }}">
             </div>
-
+            
             <div class="mb-3">
-                <label for="description" class="form-label">Description</label>
-                <textarea id="description" name="description" rows="4" class="form-control">{{ doc.description }}</textarea>
+                <label for="extracted_data" class="form-label">Extracted Data (JSON)</label>
+                <textarea id="extracted_data" name="extracted_data" rows="15" class="form-control">{{ doc.extracted_data or '' }}</textarea>
             </div>
             
             <div class="form-footer">
