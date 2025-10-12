@@ -1,319 +1,873 @@
 {% extends "base.html" %}
+
 {% block title %}Document List | ARCHIVES OF CABINET AFFAIRS DEPARTMENT{% endblock %}
 
 {% block content %}
-<div class="container-fluid-custom py-4 px-3">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <h1 class="fw-bold text-primary mb-0">📄 Documents List</h1>
-        <nav class="breadcrumb-nav">
-            <a href="{{ url_for('main.admDashboard') }}" class="breadcrumb-link">Dashboard</a> /
-            <a href="{{ url_for('main.documentList') }}" class="breadcrumb-link">Documents</a> /
-            <span class="breadcrumb-active">Documents List</span>
-        </nav>
+<div class="container-fluid-custom">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-title">DOCUMENTS LIST</h1>
+        <div class="breadcrumb">
+            <a href="{{ url_for('main.admDashboard') }}">Dashboard</a> &raquo;
+            <a href="{{ url_for('main.documentList') }}">Documents</a> &raquo;
+            <span>Documents List</span>
+        </div>
     </div>
 
+    <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-    <div class="alert-messages-container mb-3">
+    <div class="alert-messages-container">
         {% for category, message in messages %}
-        <div class="alert-message {{ category }}">
+        <div role="alert" class="alert-message {{ category }}">
             <span>{{ message }}</span>
-            <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
+            <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';" aria-label="Close">&times;</button>
         </div>
         {% endfor %}
     </div>
     {% endif %}
     {% endwith %}
 
-    <div class="card shadow-sm border-0 rounded-4 p-4 mb-4 bg-white">
-        <ul class="nav nav-tabs custom-tabs mb-4 justify-content-center">
-            <li class="nav-item">
-                <a id="listTab" class="nav-link active" href="javascript:void(0)">
-                    <i class="material-icons-outlined align-middle me-1">list</i> List View
-                </a>
-            </li>
-            <li class="nav-item">
-                <a id="gridTab" class="nav-link" href="javascript:void(0)">
-                    <i class="material-icons-outlined align-middle me-1">grid_view</i> Grid View
-                </a>
-            </li>
-        </ul>
+    <!-- Controls Section -->
+    <div class="controls-section">
+        <div class="view-toggle-container">
+            <div class="view-toggle">
+                <button id="listTab" class="view-toggle-btn active" data-view="list">
+                    <i class="material-icons-outlined">list</i> List View
+                </button>
+                <button id="gridTab" class="view-toggle-btn" data-view="grid">
+                    <i class="material-icons-outlined">grid_view</i> Grid View
+                </button>
+            </div>
+        </div>
 
-        <form id="filter-form" method="GET" action="javascript:void(0);">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <select name="category" id="category-filter" class="form-select">
-                        <option value="">-- Select Category --</option>
-                        {% for cat in distinct_categories %}
-                        <option value="{{ cat }}">{{ cat }}</option>
-                        {% endfor %}
-                    </select>
+        <!-- Filters Form -->
+        <div class="filters-card">
+            <form id="filter-form" method="GET" action="javascript:void(0);">
+                <div class="row g-3">
+                    <div class="col-lg-3 col-md-6">
+                        <select name="category" id="category-filter" class="form-select">
+                            <option value="">-- Select Category --</option>
+                            {% for cat in distinct_categories %}
+                            <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <select name="sub_category" id="subcategory-filter" class="form-select">
+                            <option value="">-- Select Sub Category --</option>
+                            {% for sub_cat in distinct_sub_categories %}
+                            <option value="{{ sub_cat }}">{{ sub_cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <select name="tags" id="tags-filter" class="form-select">
+                            <option value="">-- Choose Tags --</option>
+                            {% for tag in distinct_tags %}
+                            <option value="{{ tag }}">{{ tag }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <div class="search-container">
+                            <input type="search" name="search" id="search-input" class="form-control"
+                                   placeholder="Search documents...">
+                            <button type="submit" class="btn btn-primary search-btn">
+                                <i class="material-icons-outlined">search</i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-4">
-                    <select name="sub_category" id="subcategory-filter" class="form-select">
-                        <option value="">-- Select Sub Category --</option>
-                        {% for sub_cat in distinct_sub_categories %}
-                        <option value="{{ sub_cat }}">{{ sub_cat }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <select name="tags" id="tags-filter" class="form-select">
-                        <option value="">-- Choose Tags --</option>
-                        {% for tag in distinct_tags %}
-                        <option value="{{ tag }}">{{ tag }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            <div class="input-group mt-3">
-                <input type="search" name="search" id="search-input" class="form-control"
-                       placeholder="Search by keyword in Title, Filename, or Extracted Data...">
-                <button type="submit" class="btn btn-primary px-4">Apply Filters</button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 
-    <div id="listView" class="table-responsive mt-3">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Date</th>
-                    <th>Title</th>
-                    <th>Category</th>
-                    <th>Sub Category</th>
-                    <th>Tags</th>
-                    <th>File Name</th>
-                    <th class="text-center">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="document-table-body">
-            </tbody>
-        </table>
+    <!-- Documents List View -->
+    <div id="listView" class="documents-list-container">
+        <div class="table-responsive">
+            <table class="documents-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Sub Category</th>
+                        <th>Tags</th>
+                        <th>File Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="document-table-body">
+                    <!-- Content will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <div id="gridView" class="row g-4 mt-3 d-none">
+    <!-- Documents Grid View -->
+    <div id="gridView" class="documents-grid-container d-none">
+        <div class="row g-4" id="document-grid-body">
+            <!-- Content will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state d-none">
+        <div class="empty-state-icon">
+            <i class="material-icons-outlined">folder_open</i>
+        </div>
+        <h3>No documents found</h3>
+        <p>Try adjusting your search or filter criteria</p>
     </div>
 </div>
 
-<!-- Modal -->
+<!-- Document Viewer Modal -->
 <div class="modal fade" id="documentViewerModal" tabindex="-1" aria-labelledby="documentViewerModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content border-0 rounded-3 shadow-lg">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title fw-semibold" id="documentViewerModalLabel">Document Viewer</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="documentViewerModalLabel">Document Viewer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="documentViewerBody" style="height: 80vh;"></div>
+            <div class="modal-body" id="documentViewerBody" style="height: 80vh;">
+                <!-- Document content will be loaded here -->
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const tableBody = document.getElementById('document-table-body');
-    const gridView = document.getElementById('gridView');
-    const listTab = document.getElementById('listTab');
-    const gridTab = document.getElementById('gridTab');
-    const listView = document.getElementById('listView');
-    const viewerModal = new bootstrap.Modal(document.getElementById('documentViewerModal'));
-    const modalBody = document.getElementById('documentViewerBody');
-    const modalElement = document.getElementById('documentViewerModal');
-    const filterForm = document.getElementById('filter-form');
-    const searchInput = document.getElementById('search-input');
-    const categoryFilter = document.getElementById('category-filter');
-    const subcategoryFilter = document.getElementById('subcategory-filter');
-    const tagsFilter = document.getElementById('tags-filter');
+    document.addEventListener('DOMContentLoaded', function () {
+        // Element Selectors
+        const tableBody = document.getElementById('document-table-body');
+        const gridBody = document.getElementById('document-grid-body');
+        const listView = document.getElementById('listView');
+        const gridView = document.getElementById('gridView');
+        const emptyState = document.getElementById('emptyState');
+        const viewerModal = new bootstrap.Modal(document.getElementById('documentViewerModal'));
+        const modalTitle = document.getElementById('documentViewerModalLabel');
+        const modalBody = document.getElementById('documentViewerBody');
+        const modalElement = document.getElementById('documentViewerModal');
+        const filterForm = document.getElementById('filter-form');
+        const searchInput = document.getElementById('search-input');
+        const categoryFilter = document.getElementById('category-filter');
+        const subcategoryFilter = document.getElementById('subcategory-filter');
+        const tagsFilter = document.getElementById('tags-filter');
+        const listTab = document.getElementById('listTab');
+        const gridTab = document.getElementById('gridTab');
 
-    listTab.addEventListener('click', () => {
-        listView.classList.remove('d-none');
-        gridView.classList.add('d-none');
-        listTab.classList.add('active');
-        gridTab.classList.remove('active');
-    });
-    gridTab.addEventListener('click', () => {
-        gridView.classList.remove('d-none');
-        listView.classList.add('d-none');
-        gridTab.classList.add('active');
-        listTab.classList.remove('active');
-    });
+        // View Toggle
+        listTab.addEventListener('click', () => switchView('list'));
+        gridTab.addEventListener('click', () => switchView('grid'));
 
-    async function fetchAndRenderDocuments() {
-        const params = new URLSearchParams({
-            search: searchInput.value,
-            category: categoryFilter.value,
-            sub_category: subcategoryFilter.value,
-            tags: tagsFilter.value
-        });
-        tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Loading documents...</td></tr>';
-        gridView.innerHTML = '<div class="col-12 text-center py-4">Loading documents...</div>';
-
-        try {
-            const response = await fetch(`{{ url_for('main.api_search_documents') }}?${params.toString()}`);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const documents = await response.json();
-
-            tableBody.innerHTML = '';
-            gridView.innerHTML = '';
-
-            if (documents.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No documents found.</td></tr>';
-                gridView.innerHTML = '<div class="col-12 text-center py-4 text-muted">No documents found.</div>';
-                return;
+        function switchView(view) {
+            if (view === 'list') {
+                listView.classList.remove('d-none');
+                gridView.classList.add('d-none');
+                listTab.classList.add('active');
+                gridTab.classList.remove('active');
+            } else {
+                gridView.classList.remove('d-none');
+                listView.classList.add('d-none');
+                gridTab.classList.add('active');
+                listTab.classList.remove('active');
             }
+        }
 
-            documents.forEach(doc => {
-                const tagsHtml = doc.tags ? doc.tags.split(',').map(tag =>
-                    `<span class="badge rounded-pill bg-light text-primary border border-primary">${tag.trim()}</span>`).join(' ') : '—';
+        // Fetch and Render Documents
+        async function fetchAndRenderDocuments() {
+            const params = new URLSearchParams({
+                search: searchInput.value,
+                category: categoryFilter.value,
+                sub_category: subcategoryFilter.value,
+                tags: tagsFilter.value
+            });
+            
+            // Show loading state
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-5"><div class="loading-spinner"></div><p class="mt-2">Loading documents...</p></td></tr>';
+            gridBody.innerHTML = '<div class="col-12 text-center py-5"><div class="loading-spinner"></div><p class="mt-2">Loading documents...</p></div>';
+            emptyState.classList.add('d-none');
 
-                const listRowHtml = `
-                    <tr>
-                        <td>${doc.created_at || 'N/A'}</td>
-                        <td class="text-truncate" title="${doc.title || ''}">${doc.title || ''}</td>
-                        <td>${doc.category || '—'}</td>
-                        <td>${doc.sub_category || '—'}</td>
-                        <td>${tagsHtml}</td>
-                        <td class="text-truncate">${doc.original_filename || 'N/A'}</td>
-                        <td class="text-center">
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-sm btn-outline-primary view-doc-btn" 
-                                    data-file-url="${doc.file_path}" data-file-title="${doc.title || 'Document'}">
-                                    <i class="material-icons-outlined">visibility</i>
-                                </button>
-                                <a href="/documents/edit/${doc.id}" class="btn btn-sm btn-outline-secondary">
-                                    <i class="material-icons-outlined">edit</i>
-                                </a>
-                                <form action="/documents/delete/${doc.id}" method="POST" class="d-inline" 
-                                      onsubmit="return confirm('Are you sure you want to delete this document?');">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                        <i class="material-icons-outlined">delete</i>
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>`;
-                tableBody.insertAdjacentHTML('beforeend', listRowHtml);
+            try {
+                const response = await fetch(`{{ url_for('main.api_search_documents') }}?${params.toString()}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const documents = await response.json();
 
-                const gridCardHtml = `
-                    <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
-                        <div class="card document-card shadow-sm border-0 h-100">
-                            <div class="card-body d-flex flex-column align-items-center text-center">
-                                <img src="{{ url_for('static', filename='me/PDF_file_icon.svg.png') }}" class="mb-3" style="width:65px;">
-                                <h6 class="fw-semibold mb-1 text-truncate" title="${doc.title || ''}">${doc.title || ''}</h6>
-                                <small class="text-muted mb-2">${doc.created_at || 'N/A'}</small>
-                                <div class="mb-3 small">${tagsHtml}</div>
-                                <div class="mt-auto d-flex gap-2">
-                                    <button class="btn btn-sm btn-primary view-doc-btn" 
+                // Clear previous content
+                tableBody.innerHTML = '';
+                gridBody.innerHTML = '';
+
+                if (documents.length === 0) {
+                    // Show empty state
+                    listView.classList.add('d-none');
+                    gridView.classList.add('d-none');
+                    emptyState.classList.remove('d-none');
+                } else {
+                    // Show the appropriate view
+                    if (listTab.classList.contains('active')) {
+                        listView.classList.remove('d-none');
+                        gridView.classList.add('d-none');
+                    } else {
+                        gridView.classList.remove('d-none');
+                        listView.classList.add('d-none');
+                    }
+                    emptyState.classList.add('d-none');
+
+                    // Render documents
+                    documents.forEach(doc => {
+                        const createTagsHtml = (tagsString) => {
+                            if (!tagsString) return '<span class="no-tags">N/A</span>';
+                            return `<div class="tags-container">` +
+                                tagsString.split(',').map(tag => `<span class="tag-badge">${tag.trim()}</span>`).join('') +
+                                `</div>`;
+                        };
+                        const tagsHtml = createTagsHtml(doc.tags);
+
+                        // List View Row
+                        const listRowHtml = `
+                            <tr>
+                                <td class="text-nowrap date-cell">${doc.created_at || 'N/A'}</td>
+                                <td class="title-cell">
+                                    <div class="title-truncate" title="${doc.title || ''}">${doc.title || 'Untitled Document'}</div>
+                                </td>
+                                <td class="category-cell">${doc.category || '—'}</td>
+                                <td class="subcategory-cell">${doc.sub_category || '—'}</td>
+                                <td class="tags-cell">${tagsHtml}</td>
+                                <td class="filename-cell">
+                                    <div class="filename-truncate" title="${doc.original_filename || ''}">${doc.original_filename || 'N/A'}</div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary view-doc-btn mt-1" 
                                             data-file-url="${doc.file_path}" data-file-title="${doc.title || 'Document'}">
-                                        View
+                                        <i class="material-icons-outlined">visibility</i> View
                                     </button>
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">⋮</button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            <li><a href="/documents/edit/${doc.id}" class="dropdown-item">Edit</a></li>
-                                            <li><form action="/documents/delete/${doc.id}" method="POST"
-                                                      onsubmit="return confirm('Delete this document?');">
-                                                <button type="submit" class="dropdown-item text-danger">Delete</button>
-                                            </form></li>
-                                        </ul>
+                                </td>
+                                <td class="actions-cell">
+                                    <div class="action-buttons">
+                                        <a href="/documents/edit/${doc.id}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="material-icons-outlined">edit</i>
+                                        </a>
+                                        <form action="/documents/delete/${doc.id}" method="POST" class="d-inline-block" onsubmit="return confirm('Are you sure you want to delete this document?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="material-icons-outlined">delete</i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>`;
+                        tableBody.insertAdjacentHTML('beforeend', listRowHtml);
+
+                        // Grid View Card
+                        const gridCardHtml = `
+                            <div class="col-xl-3 col-lg-4 col-md-6">
+                                <div class="document-card card h-100">
+                                    <div class="card-header">
+                                        <div class="document-icon">
+                                            <i class="material-icons-outlined">description</i>
+                                        </div>
+                                        <div class="document-date">${doc.created_at || 'N/A'}</div>
+                                    </div>
+                                    <div class="card-body">
+                                        <h5 class="card-title title-truncate" title="${doc.title || ''}">${doc.title || 'Untitled Document'}</h5>
+                                        <div class="document-meta">
+                                            <div class="meta-item">
+                                                <span class="meta-label">Category:</span>
+                                                <span class="meta-value">${doc.category || '—'}</span>
+                                            </div>
+                                            <div class="meta-item">
+                                                <span class="meta-label">Sub Category:</span>
+                                                <span class="meta-value">${doc.sub_category || '—'}</span>
+                                            </div>
+                                        </div>
+                                        <div class="document-tags">
+                                            ${tagsHtml}
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <div class="document-actions">
+                                            <button type="button" class="btn btn-primary btn-sm view-doc-btn" 
+                                                    data-file-url="${doc.file_path}" data-file-title="${doc.title || 'Document'}">
+                                                <i class="material-icons-outlined">visibility</i> View
+                                            </button>
+                                            <div class="dropdown">
+                                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                    <i class="material-icons-outlined">more_vert</i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" href="/documents/edit/${doc.id}"><i class="material-icons-outlined">edit</i> Edit</a></li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <form action="/documents/delete/${doc.id}" method="POST" onsubmit="return confirm('Are you sure you want to delete this document?');">
+                                                            <button type="submit" class="dropdown-item text-danger"><i class="material-icons-outlined">delete</i> Delete</button>
+                                                        </form>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
+                            </div>`;
+                        gridBody.insertAdjacentHTML('beforeend', gridCardHtml);
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to fetch documents:", error);
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-danger"><i class="material-icons-outlined">error_outline</i><p class="mt-2">Error loading documents. Please try again.</p></td></tr>';
+                gridBody.innerHTML = '<div class="col-12 text-center py-5 text-danger"><i class="material-icons-outlined">error_outline</i><p class="mt-2">Error loading documents. Please try again.</p></div>';
+                emptyState.classList.add('d-none');
+            }
+        }
+        
+        // Document Viewer Modal
+        document.body.addEventListener('click', function(event) {
+            if (event.target.classList.contains('view-doc-btn') || event.target.closest('.view-doc-btn')) {
+                const button = event.target.classList.contains('view-doc-btn') ? event.target : event.target.closest('.view-doc-btn');
+                const fileUrl = button.getAttribute('data-file-url');
+                const fileTitle = button.getAttribute('data-file-title');
+                
+                modalTitle.textContent = fileTitle;
+                modalBody.innerHTML = `<div class="d-flex justify-content-center align-items-center h-100">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary mb-3" role="status"></div>
+                        <p>Loading document...</p>
+                    </div>
+                </div>`;
+                
+                viewerModal.show();
+                
+                // In a real implementation, you would load the document content here
+                // For this example, we'll just show a placeholder
+                setTimeout(() => {
+                    modalBody.innerHTML = `
+                        <div class="document-preview">
+                            <div class="preview-header">
+                                <h4>${fileTitle}</h4>
+                                <p class="text-muted">Preview of document content would appear here</p>
+                            </div>
+                            <div class="preview-placeholder">
+                                <i class="material-icons-outlined">description</i>
+                                <p>Document preview</p>
                             </div>
                         </div>
-                    </div>`;
-                gridView.insertAdjacentHTML('beforeend', gridCardHtml);
-            });
-
-        } catch (err) {
-            tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Error loading documents.</td></tr>';
-            gridView.innerHTML = '<div class="col-12 text-center text-danger py-4">Error loading documents.</div>';
-        }
-    }
-
-    document.body.addEventListener('click', e => {
-        if (e.target.closest('.view-doc-btn')) {
-            const btn = e.target.closest('.view-doc-btn');
-            const fileUrl = btn.dataset.fileUrl;
-            const title = btn.dataset.fileTitle;
-            modalBody.innerHTML = `<iframe src="${fileUrl}" class="w-100 h-100 border-0"></iframe>`;
-            document.getElementById('documentViewerModalLabel').innerText = title;
-            viewerModal.show();
-        }
+                    `;
+                }, 1000);
+            }
+        });
+        
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            modalBody.innerHTML = '';
+        });
+        
+        // Filter and Search
+        filterForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            fetchAndRenderDocuments();
+        });
+        
+        [categoryFilter, subcategoryFilter, tagsFilter].forEach(filter => {
+            filter.addEventListener('change', fetchAndRenderDocuments);
+        });
+        
+        // Initial load
+        fetchAndRenderDocuments();
     });
-    modalElement.addEventListener('hidden.bs.modal', () => { modalBody.innerHTML = ''; });
-
-    filterForm.addEventListener('submit', e => { e.preventDefault(); fetchAndRenderDocuments(); });
-    [categoryFilter, subcategoryFilter, tagsFilter].forEach(el => el.addEventListener('change', fetchAndRenderDocuments));
-    fetchAndRenderDocuments();
-});
 </script>
 
 <style>
-/* Professional Styling */
-body {
-    background-color: #f8f9fc;
-}
-.container-fluid-custom {
-    max-width: 1300px;
-    margin: 0 auto;
-}
-.breadcrumb-nav {
-    font-size: 0.9rem;
-}
-.breadcrumb-link {
-    color: #0d6efd;
-    text-decoration: none;
-}
-.breadcrumb-link:hover {
-    text-decoration: underline;
-}
-.breadcrumb-active {
-    color: #6c757d;
-}
-.custom-tabs .nav-link {
-    color: #6c757d;
-    border: none;
-    border-bottom: 3px solid transparent;
-    font-weight: 600;
-}
-.custom-tabs .nav-link.active {
-    color: #0d6efd;
-    border-bottom-color: #0d6efd;
-}
-.table th {
-    white-space: nowrap;
-}
-.text-truncate {
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.document-card {
-    border-radius: 12px;
-    transition: all .2s ease-in-out;
-}
-.document-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 0.75rem 1.5rem rgba(0,0,0,0.08);
-}
-.badge {
-    font-size: 0.7rem;
-    padding: 0.35em 0.6em;
-}
-.alert-message {
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    margin-bottom: 0.5rem;
-}
-.alert-message.success { background-color: #d1e7dd; color: #0f5132; }
-.alert-message.error { background-color: #f8d7da; color: #842029; }
-.close-btn {
-    background: none;
-    border: none;
-    font-size: 1.2rem;
-    float: right;
-    color: inherit;
-}
+    /* ===== VARIABLES ===== */
+    :root {
+        --primary-color: #2c5aa0;
+        --primary-light: #e8eff7;
+        --secondary-color: #6c757d;
+        --success-color: #198754;
+        --danger-color: #dc3545;
+        --warning-color: #ffc107;
+        --light-color: #f8f9fa;
+        --dark-color: #212529;
+        --border-color: #dee2e6;
+        --border-radius: 8px;
+        --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        --transition: all 0.3s ease;
+    }
+
+    /* ===== GENERAL STYLES ===== */
+    .container-fluid-custom {
+        padding: 0 1.5rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .page-title {
+        font-weight: 600;
+        color: var(--dark-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .breadcrumb {
+        font-size: 0.875rem;
+        color: var(--secondary-color);
+    }
+
+    .breadcrumb a {
+        color: var(--primary-color);
+        text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+
+    /* ===== ALERT MESSAGES ===== */
+    .alert-messages-container {
+        margin-bottom: 1.5rem;
+    }
+
+    .alert-message {
+        padding: 0.75rem 1rem;
+        border-radius: var(--border-radius);
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .alert-message.success {
+        background-color: #d1eddd;
+        color: #0f5132;
+        border: 1px solid #badbcc;
+    }
+
+    .alert-message.error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .alert-message.warning {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.25rem;
+        cursor: pointer;
+        margin-left: auto;
+    }
+
+    /* ===== CONTROLS SECTION ===== */
+    .controls-section {
+        margin-bottom: 2rem;
+    }
+
+    .view-toggle-container {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 1.5rem;
+    }
+
+    .view-toggle {
+        display: flex;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        overflow: hidden;
+    }
+
+    .view-toggle-btn {
+        background: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .view-toggle-btn:first-child {
+        border-right: 1px solid var(--border-color);
+    }
+
+    .view-toggle-btn.active {
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    .view-toggle-btn:not(.active):hover {
+        background-color: var(--light-color);
+    }
+
+    .filters-card {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        padding: 1.5rem;
+    }
+
+    .search-container {
+        position: relative;
+    }
+
+    .search-btn {
+        position: absolute;
+        right: 0;
+        top: 0;
+        height: 100%;
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* ===== DOCUMENTS LIST VIEW ===== */
+    .documents-list-container {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        overflow: hidden;
+    }
+
+    .documents-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .documents-table th {
+        background-color: var(--primary-light);
+        color: var(--primary-color);
+        font-weight: 600;
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .documents-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+    }
+
+    .documents-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .documents-table tr:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+
+    /* Table Cell Styles */
+    .date-cell {
+        white-space: nowrap;
+        color: var(--secondary-color);
+        font-size: 0.875rem;
+    }
+
+    .title-cell .title-truncate {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 500;
+    }
+
+    .category-cell, .subcategory-cell {
+        color: var(--secondary-color);
+    }
+
+    .filename-cell .filename-truncate {
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.875rem;
+    }
+
+    .actions-cell .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    /* ===== DOCUMENTS GRID VIEW ===== */
+    .documents-grid-container {
+        margin-top: 1rem;
+    }
+
+    .document-card {
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        transition: var(--transition);
+        overflow: hidden;
+    }
+
+    .document-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .document-card .card-header {
+        background-color: var(--primary-light);
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .document-icon {
+        width: 40px;
+        height: 40px;
+        background-color: var(--primary-color);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+
+    .document-date {
+        font-size: 0.75rem;
+        color: var(--secondary-color);
+    }
+
+    .document-card .card-body {
+        padding: 1.5rem;
+    }
+
+    .document-card .card-title {
+        font-weight: 600;
+        margin-bottom: 1rem;
+        height: 2.5rem;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .document-meta {
+        margin-bottom: 1rem;
+    }
+
+    .meta-item {
+        display: flex;
+        margin-bottom: 0.5rem;
+    }
+
+    .meta-label {
+        font-weight: 500;
+        margin-right: 0.5rem;
+        min-width: 100px;
+        font-size: 0.875rem;
+    }
+
+    .meta-value {
+        color: var(--secondary-color);
+        font-size: 0.875rem;
+    }
+
+    .document-tags {
+        margin-bottom: 1rem;
+    }
+
+    .document-card .card-footer {
+        background: transparent;
+        border-top: 1px solid var(--border-color);
+        padding: 1rem 1.5rem;
+    }
+
+    .document-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* ===== TAGS ===== */
+    .tags-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .tag-badge {
+        background-color: var(--primary-light);
+        color: var(--primary-color);
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .no-tags {
+        color: var(--secondary-color);
+        font-style: italic;
+        font-size: 0.875rem;
+    }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        color: var(--secondary-color);
+        margin-bottom: 1rem;
+    }
+
+    .empty-state h3 {
+        color: var(--dark-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+        color: var(--secondary-color);
+    }
+
+    /* ===== LOADING SPINNER ===== */
+    .loading-spinner {
+        width: 2rem;
+        height: 2rem;
+        border: 3px solid var(--primary-light);
+        border-top: 3px solid var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* ===== MODAL STYLES ===== */
+    .document-preview {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .preview-header {
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .preview-placeholder {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--light-color);
+        border-radius: var(--border-radius);
+    }
+
+    .preview-placeholder i {
+        font-size: 4rem;
+        color: var(--secondary-color);
+        margin-bottom: 1rem;
+    }
+
+    /* ===== RESPONSIVE STYLES ===== */
+    @media (max-width: 1200px) {
+        .document-card .card-title {
+            height: auto;
+            -webkit-line-clamp: 3;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .container-fluid-custom {
+            padding: 0 1rem;
+        }
+        
+        .documents-table th:nth-child(3),
+        .documents-table td:nth-child(3),
+        .documents-table th:nth-child(4),
+        .documents-table td:nth-child(4) {
+            display: none;
+        }
+        
+        .document-actions {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .document-actions .btn {
+            width: 100%;
+        }
+        
+        .document-actions .dropdown {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .view-toggle-container {
+            justify-content: center;
+        }
+        
+        .documents-table th:nth-child(5),
+        .documents-table td:nth-child(5) {
+            display: none;
+        }
+        
+        .title-cell .title-truncate {
+            max-width: 150px;
+        }
+        
+        .filename-cell .filename-truncate {
+            max-width: 120px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .page-title {
+            font-size: 1.5rem;
+        }
+        
+        .filters-card {
+            padding: 1rem;
+        }
+        
+        .documents-table {
+            font-size: 0.875rem;
+        }
+        
+        .documents-table th,
+        .documents-table td {
+            padding: 0.75rem 0.5rem;
+        }
+        
+        .actions-cell .action-buttons {
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        .document-card .card-body {
+            padding: 1rem;
+        }
+        
+        .meta-item {
+            flex-direction: column;
+        }
+        
+        .meta-label {
+            min-width: auto;
+            margin-bottom: 0.25rem;
+        }
+    }
 </style>
 {% endblock %}
