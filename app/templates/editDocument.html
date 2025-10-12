@@ -2,10 +2,6 @@
 
 {% block title %}Edit Document | ARCHIVES OF CABINET AFFAIRS DEPARTMENT{% endblock %}
 
-{% block style %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/categories.css') }}" />
-{% endblock %}
-
 {% block content %}
 <div class="container-fluid-custom">
     <h1>Edit Document Details</h1>
@@ -60,17 +56,16 @@
                 </div>
             </div>
 
-           <div class="mb-3">
-    <label for="tags" class="form-label">Tags (select one or more)</label>
-    <select id="tags" name="tags" class="form-control" multiple>
-        <option value="">-- Select Tags --</option>
-        {% for tag in all_tags %}
-            <option value="{{ tag.tag_name }}" {% if tag.tag_name in doc.tags %}selected{% endif %}>
-                {{ tag.tag_name }}
-            </option>
-        {% endfor %}
-    </select>
-</div>
+            <div class="mb-3">
+                <label for="tags" class="form-label">Tags (select one or more)</label>
+                <select id="tags" name="tags" class="form-control select2-multiple" multiple="multiple">
+                    {% for tag in all_tags %}
+                        <option value="{{ tag.tag_name }}" {% if tag.tag_name in doc.tags %}selected{% endif %}>
+                            {{ tag.tag_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
             
             <div class="mb-3">
                 <label for="extracted_data" class="form-label">Extracted Data (JSON)</label>
@@ -78,10 +73,23 @@
             </div>
             
             <div class="form-footer">
-                <button type="submit" class="btn btn-grd-primary">Save Changes</button>
-                <a href="{{ url_for('main.documentList') }}" class="btn btn-cancel">Cancel</a>
+                <button type="submit" class="btn btn-grd-primary px-4">Save Changes</button>
+                <a href="{{ url_for('main.documentList') }}" class="btn btn-secondary">Cancel</a>
             </div>
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // This script will run after jQuery and Select2 libraries have loaded from base.html
+    $(document).ready(function() {
+        // Find the element with the class 'select2-multiple' and apply Select2
+        $('.select2-multiple').select2({
+            placeholder: "Select or type tags",
+            allowClear: true
+        });
+    });
+</script>
 {% endblock %}
