@@ -60,18 +60,17 @@
                 </div>
             </div>
 
-            <div class="mb-3">
-                <label for="tags" class="form-label">Tags</label>
+           <div class="mb-3">
+    <label for="tags" class="form-label">Tags (select one or more)</label>
     <select id="tags" name="tags" class="form-control" multiple>
-        {% for tag in tags %}
-        <option value="{{ tag.t_id }}" 
-                {% if tag.t_id in doc.current_tag_ids %}selected{% endif %}>
-            {{ tag.tag_name }}
-        </option>
+        <option value="">-- Select Tags --</option>
+        {% for tag in all_tags %}
+            <option value="{{ tag.tag_name }}" {% if tag.tag_name in doc.tags %}selected{% endif %}>
+                {{ tag.tag_name }}
+            </option>
         {% endfor %}
     </select>
-    <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple tags</small>
-            </div>
+</div>
             
             <div class="mb-3">
                 <label for="extracted_data" class="form-label">Extracted Data (JSON)</label>

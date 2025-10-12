@@ -90,15 +90,12 @@ CABINET AFFAIRS DEPARTMENT{% endblock %} {% block content %}
 
       <div class="row">
         <div class="col-md-6 mb-3">
-          <label for="tags" class="form-label">Tags</label>
+          <label for="tags" class="form-label">Tags (select one or more)</label>
           <select id="tags" name="tags" class="form-control" multiple>
             {% for tag in tags %}
-            <option value="{{ tag.t_id }}">{{ tag.tag_name }}</option>
+            <option value="{{ tag.tag_name }}">{{ tag.tag_name }}</option>
             {% endfor %}
           </select>
-          <small class="form-text text-muted"
-            >Hold Ctrl/Cmd to select multiple tags</small
-          >
         </div>
         <div class="col-md-6 mb-3">
           <label for="ocr-engine" class="form-label">OCR Engine</label>
@@ -160,87 +157,65 @@ CABINET AFFAIRS DEPARTMENT{% endblock %} {% block content %}
     }
 
     analyzeButton.addEventListener("click", async function (e) {
-    e.preventDefault();
-    const fileInput = document.getElementById("file-upload");
+      e.preventDefault();
+      const fileInput = document.getElementById("file-upload");
 
-    if (!documentForm.checkValidity() || fileInput.files.length === 0) {
+      if (!documentForm.checkValidity() || fileInput.files.length === 0) {
         alert("Please fill out all required fields and select a file.");
         return;
-    }
+      }
 
-    const formData = new FormData(documentForm);
-    
-    // Get selected multiple tags
-    const tagSelect = document.getElementById('tags');
-    const selectedTags = Array.from(tagSelect.selectedOptions).map(option => option.value);
-    
-    // Add each selected tag to formData
-    selectedTags.forEach(tagId => {
-        formData.append('tags', tagId);
-    });
+      const formData = new FormData(documentForm);
 
-    showLoader("Analyzing Document... Please wait.");
+      showLoader("Analyzing Document... Please wait.");
 
-    try {
+      try {
         const response = await fetch("{{ url_for('main.addNewDocuments') }}", {
-            method: "POST",
-            body: formData,
+          method: "POST",
+          body: formData,
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(
-                errorData.error || "An unknown error occurred during analysis."
-            );
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || "An unknown error occurred during analysis."
+          );
         }
 
         const result = await response.json();
 
         // Display the extracted data in the textarea
         const extractedDataString = JSON.stringify(
-            result.extracted_data,
-            null,
-            2
+          result.extracted_data,
+          null,
+          2
         );
         extractedTextarea.value = extractedDataString;
 
-        // Clear any previous hidden inputs
-        const existingHiddenInputs = submissionForm.querySelectorAll('input[type="hidden"]');
-        existingHiddenInputs.forEach(input => input.remove());
-
-        // Copy form data to hidden inputs for submission
+        // Copy form data to a hidden input for submission
         const submissionFormData = new FormData(documentForm);
         for (const [key, value] of submissionFormData.entries()) {
-            // We don't want to submit the file again
-            if (key !== "file") {
-                const hiddenInput = document.createElement("input");
-                hiddenInput.type = "hidden";
-                hiddenInput.name = key;
-                hiddenInput.value = value;
-                submissionForm.appendChild(hiddenInput);
-            }
-        }
-
-        // Also add the tags as hidden inputs
-        selectedTags.forEach(tagId => {
+          // We don't want to submit the file again
+          if (key !== "file") {
             const hiddenInput = document.createElement("input");
             hiddenInput.type = "hidden";
-            hiddenInput.name = "tags";
-            hiddenInput.value = tagId;
+            hiddenInput.name = key;
+            hiddenInput.value = value;
             submissionForm.appendChild(hiddenInput);
-        });
+          }
+        }
 
         // Reveal the results and scroll to it
         resultsContainer.classList.remove("hidden");
         resultsContainer.scrollIntoView({ behavior: "smooth" });
 
         alert(result.message);
-    } catch (error) {
+      } catch (error) {
         alert(`Error: ${error.message}`);
-    } finally {
+      } finally {
         hideLoader();
-    }
-  });
+      }
+    });
 
     submissionForm.addEventListener("submit", async function (e) {
       e.preventDefault();

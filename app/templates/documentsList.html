@@ -1,416 +1,269 @@
-{% extends "base.html" %} {% block title %}Document List | ARCHIVES OF CABINET
-AFFAIRS DEPARTMENT{% endblock %} {% block content %}
+{% extends "base.html" %}
+
+{% block title %}Document List | ARCHIVES OF CABINET AFFAIRS DEPARTMENT{% endblock %}
+
+{% block content %}
 <div class="container-fluid-custom">
-  <h1>DOCUMENTS LIST</h1>
-  <div class="breadcrumb">
-    <a href="{{ url_for('main.admDashboard') }}">Dashboard</a> &raquo;
-    <a href="{{ url_for('main.documentList') }}">Documents</a> &raquo;
-    <span>Documents List</span>
-  </div>
-
-  {% with messages = get_flashed_messages(with_categories=true) %} {% if
-  messages %}
-  <div class="alert-messages-container">
-    {% for category, message in messages %}
-    <div role="alert" class="alert-message {{ category }}">
-      <span>{{ message }}</span>
-      <button
-        type="button"
-        class="close-btn"
-        onclick="this.parentElement.style.display='none';"
-        aria-label="Close"
-      >
-        &times;
-      </button>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %} {% endwith %}
-
-  <div class="add-category-form-card">
-    <div class="d-flex justify-content-center mb-4">
-      <ul class="nav nav-tabs custom-tabs">
-        <li class="nav-item">
-          <a id="listTab" class="nav-link active" href="javascript:void(0)">
-            <i class="material-icons-outlined">list</i> List View
-          </a>
-        </li>
-        <li class="nav-item">
-          <a id="gridTab" class="nav-link" href="javascript:void(0)">
-            <i class="material-icons-outlined">grid_view</i> Grid View
-          </a>
-        </li>
-      </ul>
+    <h1>DOCUMENTS LIST</h1>
+    <div class="breadcrumb">
+        <a href="{{ url_for('main.admDashboard') }}">Dashboard</a> &raquo;
+        <a href="{{ url_for('main.documentList') }}">Documents</a> &raquo;
+        <span>Documents List</span>
     </div>
 
-    <form id="filter-form" method="GET" action="javascript:void(0);">
-      <div class="row">
-        <div class="col-md-4 mb-3">
-          <select name="category" id="category-filter" class="form-control">
-            <option value="">-- Select Category --</option>
-            {% for cat in distinct_categories %}
-            <option value="{{ cat }}">{{ cat }}</option>
-            {% endfor %}
-          </select>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="alert-messages-container">
+        {% for category, message in messages %}
+        <div role="alert" class="alert-message {{ category }}">
+            <span>{{ message }}</span>
+            <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';" aria-label="Close">&times;</button>
         </div>
-        <div class="col-md-4 mb-3">
-          <select
-            name="sub_category"
-            id="subcategory-filter"
-            class="form-control"
-          >
-            <option value="">-- Select Sub Category --</option>
-            {% for sub_cat in distinct_sub_categories %}
-            <option value="{{ sub_cat }}">{{ sub_cat }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-4 mb-3">
-          <select name="tags" id="tags-filter" class="form-control">
-            <option value="">-- Choose Tags --</option>
-            {% for tag in distinct_tags %}
-            <option value="{{ tag.t_id }}">{{ tag.tag_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
-      <div class="input-group">
-        <input
-          type="search"
-          name="search"
-          id="search-input"
-          class="form-control"
-          placeholder="Search by keyword in Title, Filename, Tags, or Extracted Data..."
-        />
-        <button type="submit" class="btn btn-grd-primary">Apply Filters</button>
-      </div>
-    </form>
-  </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
 
-  <div id="listView" class="category-list-table-card mt-3">
-    <table class="category-list-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Title</th>
-          <th>Category</th>
-          <th>Sub Category</th>
-          <th>
-            {% if doc.tags %} {% for tag in doc.tags %}
-            <span class="badge bg-secondary me-1">{{ tag }}</span>
-            {% endfor %} {% else %}
-            <span class="text-muted">No tags</span>
-            {% endif %}
-          </th>
-          <th>File-Name</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="document-table-body"></tbody>
-    </table>
-  </div>
+    <div class="add-category-form-card">
 
-  <div id="gridView" class="row d-none mt-3"></div>
+        <div class="d-flex justify-content-center mb-4">
+            <ul class="nav nav-tabs custom-tabs">
+                <li class="nav-item">
+                    <a id="listTab" class="nav-link active" href="javascript:void(0)">
+                        <i class="material-icons-outlined">list</i> List View
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a id="gridTab" class="nav-link" href="javascript:void(0)">
+                        <i class="material-icons-outlined">grid_view</i> Grid View
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <form id="filter-form" method="GET" action="javascript:void(0);">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <select name="category" id="category-filter" class="form-control">
+                        <option value="">-- Select Category --</option>
+                        {% for cat in distinct_categories %}
+                        <option value="{{ cat }}">{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <select name="sub_category" id="subcategory-filter" class="form-control">
+                        <option value="">-- Select Sub Category --</option>
+                        {% for sub_cat in distinct_sub_categories %}
+                        <option value="{{ sub_cat }}">{{ sub_cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <select name="tags" id="tags-filter" class="form-control">
+                        <option value="">-- Choose Tags --</option>
+                        {% for tag in distinct_tags %}
+                        <option value="{{ tag }}">{{ tag }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="input-group">
+                <input type="search" name="search" id="search-input" class="form-control"
+                       placeholder="Search by keyword in Title, Filename, Tags, or Extracted Data...">
+                <button type="submit" class="btn btn-grd-primary">Apply Filters</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="listView" class="category-list-table-card mt-3">
+        <table class="category-list-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Sub Category</th>
+                    <th>Tag</th>
+                    <th>File-Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="document-table-body">
+                </tbody>
+        </table>
+    </div>
+
+    <div id="gridView" class="row d-none mt-3">
+        </div>
 </div>
 
-<div
-  class="modal fade"
-  id="documentViewerModal"
-  tabindex="-1"
-  aria-labelledby="documentViewerModalLabel"
-  aria-hidden="true"
->
-  <div class="modal-dialog modal-xl modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="documentViewerModalLabel">
-          Document Viewer
-        </h5>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="modal"
-          aria-label="Close"
-        ></button>
-      </div>
-      <div
-        class="modal-body"
-        id="documentViewerBody"
-        style="height: 80vh"
-      ></div>
+<div class="modal fade" id="documentViewerModal" tabindex="-1" aria-labelledby="documentViewerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="documentViewerModalLabel">Document Viewer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="documentViewerBody" style="height: 80vh;">
+                </div>
+        </div>
     </div>
-  </div>
 </div>
+
 
 <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    // --- Element Selectors ---
-    const tableBody = document.getElementById("document-table-body");
-    const gridView = document.getElementById("gridView");
-    const viewerModal = new bootstrap.Modal(
-      document.getElementById("documentViewerModal")
-    );
-    const modalTitle = document.getElementById("documentViewerModalLabel");
-    const modalBody = document.getElementById("documentViewerBody");
-    const modalElement = document.getElementById("documentViewerModal");
+    document.addEventListener('DOMContentLoaded', function () {
+        // --- Element Selectors ---
+        const tableBody = document.getElementById('document-table-body');
+        const gridView = document.getElementById('gridView');
+        const viewerModal = new bootstrap.Modal(document.getElementById('documentViewerModal'));
+        const modalTitle = document.getElementById('documentViewerModalLabel');
+        const modalBody = document.getElementById('documentViewerBody');
+        const modalElement = document.getElementById('documentViewerModal');
+        
+        // --- Other selectors and view toggler logic ---
+        const filterForm = document.getElementById('filter-form');
+        const searchInput = document.getElementById('search-input');
+        const categoryFilter = document.getElementById('category-filter');
+        const subcategoryFilter = document.getElementById('subcategory-filter');
+        const tagsFilter = document.getElementById('tags-filter');
+        const listTab = document.getElementById('listTab');
+        const gridTab = document.getElementById('gridTab');
+        const listView = document.getElementById('listView');
+        listTab.addEventListener('click', () => { listView.classList.remove('d-none'); gridView.classList.add('d-none'); listTab.classList.add('active'); gridTab.classList.remove('active'); });
+        gridTab.addEventListener('click', () => { gridView.classList.remove('d-none'); listView.classList.add('d-none'); gridTab.classList.add('active'); listTab.classList.remove('active'); });
 
-    // --- Other selectors and view toggler logic ---
-    const filterForm = document.getElementById("filter-form");
-    const searchInput = document.getElementById("search-input");
-    const categoryFilter = document.getElementById("category-filter");
-    const subcategoryFilter = document.getElementById("subcategory-filter");
-    const tagsFilter = document.getElementById("tags-filter");
-    const listTab = document.getElementById("listTab");
-    const gridTab = document.getElementById("gridTab");
-    const listView = document.getElementById("listView");
-    listTab.addEventListener("click", () => {
-      listView.classList.remove("d-none");
-      gridView.classList.add("d-none");
-      listTab.classList.add("active");
-      gridTab.classList.remove("active");
-    });
-    gridTab.addEventListener("click", () => {
-      gridView.classList.remove("d-none");
-      listView.classList.add("d-none");
-      gridTab.classList.add("active");
-      listTab.classList.remove("active");
-    });
+        // --- Main Data Fetching and Rendering Function ---
+        async function fetchAndRenderDocuments() {
+            const params = new URLSearchParams({ search: searchInput.value, category: categoryFilter.value, sub_category: subcategoryFilter.value, tags: tagsFilter.value });
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Loading documents...</td></tr>';
+            gridView.innerHTML = '<div class="col-12 text-center py-4">Loading documents...</div>';
 
-    // --- Main Data Fetching and Rendering Function ---
-    async function fetchAndRenderDocuments() {
-      const params = new URLSearchParams({
-        search: searchInput.value,
-        category: categoryFilter.value,
-        sub_category: subcategoryFilter.value,
-        tags: tagsFilter.value,
-      });
-      tableBody.innerHTML =
-        '<tr><td colspan="7" class="text-center py-4">Loading documents...</td></tr>';
-      gridView.innerHTML =
-        '<div class="col-12 text-center py-4">Loading documents...</div>';
+            try {
+                const response = await fetch(`{{ url_for('main.api_search_documents') }}?${params.toString()}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const documents = await response.json();
 
-      try {
-        const response = await fetch(
-          `{{ url_for('main.api_search_documents') }}?${params.toString()}`
-        );
-        if (!response.ok)
-          throw new Error(`HTTP error! status: ${response.status}`);
-        const documents = await response.json();
+                tableBody.innerHTML = '';
+                gridView.innerHTML = '';
 
-        tableBody.innerHTML = "";
-        gridView.innerHTML = "";
+                if (documents.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">No documents found.</td></tr>';
+                    gridView.innerHTML = '<div class="col-12 text-center py-4">No documents found.</div>';
+                } else {
+                    documents.forEach(doc => {
+                        const listRowHtml = `
+                            <tr>
+                                <td>${doc.created_at || 'N/A'}</td>
+                                <td>${doc.title || ''}</td>
+                                <td>${doc.category || ''}</td>
+                                <td>${doc.sub_category || ''}</td>
+                                <td>${doc.tags || ''}</td>
+                                <td>
+                                    <p class="mb-1">${doc.original_filename || 'N/A'}</p>
+                                    <button type="button" class="btn-action btn-view btn-sm view-doc-btn" 
+                                            data-file-url="${doc.file_path}" data-file-title="${doc.title || 'Document'}">
+                                        <i class="material-icons-outlined">visibility</i> View
+                                    </button>
+                                </td>
+                                <td>
+                                    <a href="/documents/edit/${doc.id}" class="btn-action btn-edit"><i class="material-icons-outlined">edit</i>Edit</a>
+                                    <form action="/documents/delete/${doc.id}" method="POST" class="d-inline-block" onsubmit="return confirm('Are you sure you want to delete this document?');">
+                                        <button type="submit" class="btn-action btn-delete"><i class="material-icons-outlined">delete</i>Delete</button>
+                                    </form>
+                                </td>
+                            </tr>`;
+                        tableBody.insertAdjacentHTML('beforeend', listRowHtml);
 
-        if (documents.length === 0) {
-          tableBody.innerHTML =
-            '<tr><td colspan="7" class="text-center py-4">No documents found.</td></tr>';
-          gridView.innerHTML =
-            '<div class="col-12 text-center py-4">No documents found.</div>';
-        } else {
-          documents.forEach((doc) => {
-            const listRowHtml = `
-    <tr>
-        <td>${doc.created_at || 'N/A'}</td>
-        <td>${doc.title || ''}</td>
-        <td>${doc.category || ''}</td>
-        <td>${doc.sub_category || ''}</td>
-        <td>
-            ${doc.tags && doc.tags.length > 0 ? 
-                doc.tags.map(tag => `<span class="badge bg-secondary me-1">${tag}</span>`).join('') : 
-                '<span class="text-muted">No tags</span>'
-            }
-        </td>
-        <td>
-            <p class="mb-1">${doc.original_filename || 'N/A'}</p>
-            <button type="button" class="btn-action btn-view btn-sm view-doc-btn" 
-                    data-file-url="${doc.file_path}" data-file-title="${doc.title || 'Document'}">
-                <i class="material-icons-outlined">visibility</i> View
-            </button>
-        </td>
-        <td>
-            <a href="/documents/edit/${doc.id}" class="btn-action btn-edit"><i class="material-icons-outlined">edit</i>Edit</a>
-            <form action="/documents/delete/${doc.id}" method="POST" class="d-inline-block" onsubmit="return confirm('Are you sure you want to delete this document?');">
-                <button type="submit" class="btn-action btn-delete"><i class="material-icons-outlined">delete</i>Delete</button>
-            </form>
-        </td>
-    </tr>`;
-            tableBody.insertAdjacentHTML("beforeend", listRowHtml);
-
-            const gridCardHtml = `
+                        const gridCardHtml = `
                             <div class="col-md-4 mb-4">
                                 <div class="card h-100 shadow-sm border-0">
                                     <div class="card-body text-center">
                                         <img src="{{ url_for('static', filename='me/PDF_file_icon.svg.png') }}" alt="PDF" class="img-fluid mb-3" style="width:70px;">
-                                        <h5 class="card-title">${
-                                          doc.title || ""
-                                        }</h5>
-                                        <p class="text-muted small">${
-                                          doc.created_at || "N/A"
-                                        }</p>
+                                        <h5 class="card-title">${doc.title || ''}</h5>
+                                        <p class="text-muted small">${doc.created_at || 'N/A'}</p>
                                         <p class="mb-2">
-    <strong>Category:</strong> ${doc.category || ""} <br>
-    <strong>Sub Category:</strong> ${doc.sub_category || ""} <br>
-    <strong>Tags:</strong> 
-    ${
-      doc.tags && doc.tags.length > 0
-        ? doc.tags
-            .map((tag) => `<span class="badge bg-secondary me-1">${tag}</span>`)
-            .join("")
-        : '<span class="text-muted">No tags</span>'
-    }
-</p>
+                                            <strong>Category:</strong> ${doc.category || ''} <br>
+                                            <strong>Sub Category:</strong> ${doc.sub_category || ''} <br>
+                                            <strong>Tag:</strong> ${doc.tags || ''}
+                                        </p>
                                         <button type="button" class="btn btn-sm btn-grd-primary mb-3 view-doc-btn" 
-                                                data-file-url="${
-                                                  doc.file_path
-                                                }" data-file-title="${
-              doc.title || "Document"
-            }">
+                                                data-file-url="${doc.file_path}" data-file-title="${doc.title || 'Document'}">
                                             View
                                         </button>
                                         <div class="dropdown">
                                             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">Actions</button>
                                             <ul class="dropdown-menu">
-                                                <li><a class="dropdown-item" href="/documents/edit/${
-                                                  doc.id
-                                                }">Edit</a></li>
-                                                <li><form action="/documents/delete/${
-                                                  doc.id
-                                                }" method="POST" onsubmit="return confirm('Are you sure you want to delete this document?');"><button type="submit" class="dropdown-item text-danger">Delete</button></form></li>
+                                                <li><a class="dropdown-item" href="/documents/edit/${doc.id}">Edit</a></li>
+                                                <li><form action="/documents/delete/${doc.id}" method="POST" onsubmit="return confirm('Are you sure you want to delete this document?');"><button type="submit" class="dropdown-item text-danger">Delete</button></form></li>
                                             </ul>
                                         </div>
                                     </div>
                                 </div>
                             </div>`;
-            gridView.insertAdjacentHTML("beforeend", gridCardHtml);
-          });
+                        gridView.insertAdjacentHTML('beforeend', gridCardHtml);
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to fetch documents:", error);
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error loading documents. Please try again.</td></tr>';
+                gridView.innerHTML = '<div class="col-12 text-center py-4 text-danger">Error loading documents. Please try again.</div>';
+            }
         }
-      } catch (error) {
-        console.error("Failed to fetch documents:", error);
-        tableBody.innerHTML =
-          '<tr><td colspan="7" class="text-center py-4 text-danger">Error loading documents. Please try again.</td></tr>';
-        gridView.innerHTML =
-          '<div class="col-12 text-center py-4 text-danger">Error loading documents. Please try again.</div>';
-      }
-    }
 
-    // --- NEW MODAL LOGIC ---
-    document.body.addEventListener("click", function (event) {
-      // Use event delegation to catch clicks on dynamically added buttons
-      if (
-        event.target.classList.contains("view-doc-btn") ||
-        event.target.closest(".view-doc-btn")
-      ) {
-        const button = event.target.closest(".view-doc-btn");
-        const fileUrl = button.dataset.fileUrl;
-        const fileTitle = button.dataset.fileTitle;
-        const fileExtension = fileUrl.split(".").pop().toLowerCase();
+        // --- NEW MODAL LOGIC ---
+        document.body.addEventListener('click', function(event) {
+            // Use event delegation to catch clicks on dynamically added buttons
+            if (event.target.classList.contains('view-doc-btn') || event.target.closest('.view-doc-btn')) {
+                const button = event.target.closest('.view-doc-btn');
+                const fileUrl = button.dataset.fileUrl;
+                const fileTitle = button.dataset.fileTitle;
+                const fileExtension = fileUrl.split('.').pop().toLowerCase();
 
-        modalTitle.textContent = fileTitle; // Set the modal title
-        modalBody.innerHTML = ""; // Clear previous content
+                modalTitle.textContent = fileTitle; // Set the modal title
+                modalBody.innerHTML = ''; // Clear previous content
 
-        let embedHtml = "";
-        // Check if it's an image
-        if (
-          ["jpg", "jpeg", "png", "gif", "svg", "webp", "img"].includes(
-            fileExtension
-          )
-        ) {
-          embedHtml = `<img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: contain;" alt="${fileTitle}">`;
-        }
-        // Check if it's a PDF
-        else if (fileExtension === "pdf") {
-          embedHtml = `<iframe src="${fileUrl}" style="width: 100%; height: 100%; border: none;"></iframe>`;
-        }
-        // Fallback for other file types
-        else {
-          embedHtml = `
+                let embedHtml = '';
+                // Check if it's an image
+                if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'img'].includes(fileExtension)) {
+                    embedHtml = `<img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: contain;" alt="${fileTitle}">`;
+                } 
+                // Check if it's a PDF
+                else if (fileExtension === 'pdf') {
+                    embedHtml = `<iframe src="${fileUrl}" style="width: 100%; height: 100%; border: none;"></iframe>`;
+                } 
+                // Fallback for other file types
+                else {
+                    embedHtml = `
                         <div class="text-center p-5">
                             <p>This file type (.${fileExtension}) cannot be previewed directly.</p>
                             <a href="${fileUrl}" class="btn btn-primary" target="_blank" download>Download File</a>
                         </div>
                     `;
-        }
+                }
 
-        modalBody.innerHTML = embedHtml;
-        viewerModal.show(); // Show the modal
-      }
-    });
+                modalBody.innerHTML = embedHtml;
+                viewerModal.show(); // Show the modal
+            }
+        });
+        
+        // Clean up the modal body when it's closed
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            modalBody.innerHTML = '';
+        });
 
-    // Clean up the modal body when it's closed
-    modalElement.addEventListener("hidden.bs.modal", function () {
-      modalBody.innerHTML = "";
+        // --- Event Listeners & Initial Load ---
+        filterForm.addEventListener('submit', (event) => { event.preventDefault(); fetchAndRenderDocuments(); });
+        [categoryFilter, subcategoryFilter, tagsFilter].forEach(filter => { filter.addEventListener('change', fetchAndRenderDocuments); });
+        fetchAndRenderDocuments();
     });
-
-    // --- Event Listeners & Initial Load ---
-    filterForm.addEventListener("submit", (event) => {
-      event.preventDefault();
-      fetchAndRenderDocuments();
-    });
-    [categoryFilter, subcategoryFilter, tagsFilter].forEach((filter) => {
-      filter.addEventListener("change", fetchAndRenderDocuments);
-    });
-    fetchAndRenderDocuments();
-  });
 </script>
 
 <style>
-  /* Custom tabs styling */
-  .custom-tabs .nav-link {
-    color: #555;
-    font-weight: 500;
-    border: none;
-    border-bottom: 2px solid transparent;
-    margin: 0 10px;
-  }
-  .custom-tabs .nav-link.active {
-    color: #007bff;
-    border-bottom: 2px solid #007bff;
-  }
-  .card {
-    border-radius: 10px;
-  }
-  /* Style for multiple select */
-  select[multiple] {
-    min-height: 120px;
-  }
-
-  /* Style for tag badges */
-  .badge {
-    font-size: 0.75em;
-    padding: 0.35em 0.65em;
-  }
-  /* Style for multiple select */
-select[multiple] {
-    min-height: 120px;
-    padding: 8px;
-}
-
-/* Style for tag badges */
-.badge {
-    font-size: 0.75em;
-    padding: 0.35em 0.65em;
-    margin: 0.1em;
-    display: inline-block;
-}
-
-/* Better styling for multiple select options */
-select[multiple] option {
-    padding: 8px 12px;
-    margin: 2px 0;
-    border-radius: 4px;
-}
-
-select[multiple] option:checked {
-    background-color: #007bff;
-    color: white;
-}
-
-/* Container for tags to ensure proper wrapping */
-.tags-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    align-items: center;
-    min-height: 40px;
-}
+/* Custom tabs styling */
+.custom-tabs .nav-link { color: #555; font-weight: 500; border: none; border-bottom: 2px solid transparent; margin: 0 10px; }
+.custom-tabs .nav-link.active { color: #007bff; border-bottom: 2px solid #007bff; }
+.card { border-radius: 10px; }
 </style>
 {% endblock %}
