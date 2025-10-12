@@ -88,96 +88,6 @@ def get_s3_client():
         "s3",
         region_name=current_app.config.get("AWS_REGION")
     )
-# def upload_file_to_s3(file, bucket_name, acl="public-read"):
-#     """Uploads a file object to S3."""
-#     s3_client = get_s3_client()
-#     try:
-#         s3_client.upload_fileobj(
-#             file,  # This is the file object
-#             bucket_name,
-#             file.filename,
-#             ExtraArgs={
-#                 "ACL": acl,
-#                 "ContentType": file.content_type
-#             }
-#         )
-#         # Generate the URL
-#         aws_region = current_app.config.get("AWS_REGION")
-#         url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{file.filename}"
-#         return url
-#     except ClientError as e:
-#         print(f"Error uploading to S3: {e}")
-#         return None
-
-
-# def upload_file_to_s3(file_obj, bucket_name, object_name, acl="public-read"): # CHANGED: Added object_name
-#     """Uploads a file object to S3."""
-#     s3_client = get_s3_client()
-#     try:
-#         # Get the content type from the file object if it exists
-#         content_type = getattr(file_obj, 'content_type', 'application/octet-stream')
-        
-#         s3_client.upload_fileobj(
-#             file_obj,       # This is the file object
-#             bucket_name,
-#             object_name,    # CHANGED: Use the provided object_name
-#             ExtraArgs={
-#                 "ACL": acl,
-#                 "ContentType": content_type
-#             }
-#         )
-#         # Generate the URL
-#         aws_region = current_app.config.get("AWS_REGION")
-#         url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{object_name}" # CHANGED: Use object_name
-#         return url
-#     except ClientError as e:
-#         current_app.logger.error(f"Error uploading to S3: {e}")
-#         return None
-
-# def upload_file_to_s3(file_obj, bucket_name, object_name):
-#     """Uploads a file object to S3."""
-#     s3_client = get_s3_client()
-#     try:
-#         content_type = getattr(file_obj, 'content_type', 'application/octet-stream')
-
-#         s3_client.upload_fileobj(
-#             file_obj,
-#             bucket_name,
-#             object_name,
-#             ExtraArgs={
-#             "ContentType": content_type
-#             }
-#         )
-
-#         aws_region = current_app.config.get("AWS_REGION")
-#         url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{object_name}"
-#         return url
-#     except ClientError as e:
-#         current_app.logger.error(f"Error uploading to S3: {e}")
-#         return None
-
-# def upload_file_to_s3(file_obj, bucket_name, object_name):
-#     """Uploads a file object to S3."""
-#     s3_client = get_s3_client()
-#     try:
-#         content_type = getattr(file_obj, 'content_type', 'application/octet-stream')
-
-#         s3_client.upload_fileobj(
-#             file_obj,
-#             bucket_name,
-#             object_name,
-#             ExtraArgs={
-#                 "ContentType": content_type,
-#                 "ContentDisposition": "inline"  # <-- ADD THIS LINE
-#             }
-#         )
-
-#         aws_region = current_app.config.get("AWS_REGION")
-#         url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{object_name}"
-#         return url
-#     except ClientError as e:
-#         current_app.logger.error(f"Error uploading to S3: {e}")
-#         return None
 
 def upload_file_to_s3(file_obj, bucket_name, object_name):
     """Uploads a file object to S3."""
@@ -428,30 +338,6 @@ def perform_tesseract_ocr(filepath, mime_type):
 # Azure OCR (fast: whole-file; fallback: chunked & parallel)
 # ---------------------------------------------------------------------
 
-
-# AFTER (The correct code)
-# def _azure_analyze_file(client, model_id, file_path_or_bytes):
-#     """
-#     Calls Azure DI Read/Layout and returns the result object.
-#     Accepts either bytes or a path to keep memory usage predictable on big docs.
-#     """
-#     if isinstance(file_path_or_bytes, (bytes, bytearray)):
-#         poller = client.begin_analyze_document(
-#             model_id=model_id,
-#             document=file_path_or_bytes,  # <--- CORRECTED
-#             content_type="application/pdf",
-#         )
-#     else:
-#         with open(file_path_or_bytes, "rb") as f:
-#             poller = client.begin_analyze_document(
-#                 model_id=model_id,
-#                 document=f,  # <--- CORRECTED
-#                 content_type="application/pdf",
-#             )
-#     return poller.result()
-
-
-# REPLACE the entire function with this one
 def _azure_analyze_file(client, model_id, file_path_or_bytes):
     """
     Calls Azure DI Read/Layout and returns the result object.
@@ -491,17 +377,14 @@ def perform_azure_ocr(filepath, model_id="prebuilt-read", max_retries=3):
     last_exception = None
     for attempt in range(max_retries):
         try:
-            # The entire logic is now reduced to this single call.
-            # _azure_analyze_file handles opening the file and sending the stream.
             result = _azure_analyze_file(client, model_id, filepath)
 
-            # Process the successful result from the single API call
             full_text = []
             for page in result.pages:
                 full_text.append(f"--- Page {page.page_number} ---")
                 for line in page.lines:
                     full_text.append(line.content)
-                full_text.append("")  # Adds a blank line for readability
+                full_text.append("")  
 
             return "\n".join(full_text)
 
@@ -510,9 +393,7 @@ def perform_azure_ocr(filepath, model_id="prebuilt-read", max_retries=3):
             current_app.logger.warning(
                 f"[Azure OCR] Retriable API error on attempt {attempt + 1}/{max_retries}. Error: {e}"
             )
-            # Optional: time.sleep(2**attempt) for exponential backoff
         except Exception as e:
-            # For non-retriable errors (e.g., bad file format), fail immediately
             current_app.logger.error(
                 f"[Azure OCR] Unexpected, non-retriable error during analysis: {e}"
             )
@@ -520,7 +401,6 @@ def perform_azure_ocr(filepath, model_id="prebuilt-read", max_retries=3):
                 f"An unexpected error occurred during Azure analysis: {e}"
             )
 
-    # This part is reached only if all retries fail
     current_app.logger.error(
         f"[Azure OCR] All {max_retries} attempts failed. Last error: {last_exception}"
     )
@@ -619,6 +499,7 @@ def analyze_document_with_openai(ocr_text, doc_types_path="document_types.json")
 # Counter functions for Dashboards
 # ---------------------------------------------------------------------
 
+# Task ---- 
 # 1.⁠ ⁠total documents uploaded + 
 # 2.⁠ ⁠Total characters/tokens extracted
 # 3.⁠ ⁠Total space used
@@ -646,42 +527,6 @@ def format_bytes(size):
         n += 1
     return f"{size:.2f} {power_labels[n]}B"
 
-# def get_s3_bucket_size():
-#     """Fetches the total bucket size from AWS CloudWatch."""
-#     try:
-#         cloudwatch = boto3.client(
-#             "cloudwatch",
-#             aws_access_key_id=current_app.config.get("AWS_ACCESS_KEY"),
-#             aws_secret_access_key=current_app.config.get("AWS_SECRET_KEY"),
-#             region_name=current_app.config.get("AWS_REGION"),
-#         )
-#         bucket_name = current_app.config.get("AWS_S3_BUCKET")
-        
-#         # Get the latest data point from the last 48 hours
-#         response = cloudwatch.get_metric_statistics(
-#             Namespace='AWS/S3',
-#             MetricName='BucketSizeBytes',
-#             Dimensions=[
-#                 {'Name': 'BucketName', 'Value': bucket_name},
-#                 {'Name': 'StorageType', 'Value': 'StandardStorage'}
-#             ],
-#             StartTime=datetime.utcnow() - timedelta(days=2),
-#             EndTime=datetime.utcnow(),
-#             Period=86400, # Daily
-#             Statistics=['Average'],
-#             Unit='Bytes'
-#         )
-        
-#         if response['Datapoints']:
-#             # Get the most recent data point
-#             latest_datapoint = sorted(response['Datapoints'], key=lambda x: x['Timestamp'], reverse=True)[0]
-#             size_in_bytes = latest_datapoint['Average']
-#             return format_bytes(size_in_bytes)
-#         else:
-#             return "0 B" # No data yet
-#     except Exception as e:
-#         current_app.logger.error(f"Could not get S3 bucket size from CloudWatch: {e}")
-#         return "Error"
 
 def get_s3_bucket_size():
     """
@@ -692,18 +537,12 @@ def get_s3_bucket_size():
         s3 = get_s3_client()
         bucket_name = current_app.config.get("AWS_S3_BUCKET")
         total_size = 0
-
-        # S3 lists objects in "pages" of 1000. We must loop through all pages.
-        # A paginator handles this looping for us automatically.
         paginator = s3.get_paginator('list_objects_v2')
         pages = paginator.paginate(Bucket=bucket_name)
 
         for page in pages:
-            # The 'Contents' key might not exist if a page is empty or the bucket is empty
             for obj in page.get('Contents', []):
                 total_size += obj['Size']
-        
-        # We can reuse our existing helper to make the number readable
         return format_bytes(total_size)
     
     except Exception as e:
@@ -737,7 +576,7 @@ def get_dashboard_stats():
             stats['admin'] = cursor.fetchone()['count']
 
             cursor.execute("SELECT COUNT(*) AS count FROM subadmin")
-            stats['subadmin'] = cursor.fetchone()['count'] # CORRECTED KEY
+            stats['subadmin'] = cursor.fetchone()['count'] 
 
             cursor.execute("SELECT COUNT(*) AS count FROM categories")
             stats['categories'] = cursor.fetchone()['count']
@@ -765,7 +604,6 @@ def get_dashboard_stats():
 
     except Exception as e:
         current_app.logger.error(f"Error fetching dashboard stats: {e}")
-        # Returns the dictionary of zeros in case of an error
     finally:
         if connection:
             connection.close()
@@ -773,74 +611,6 @@ def get_dashboard_stats():
 
     return stats
 
-
-
-
-
-
-#For searching / now cloed for new searching without page reload
-
-# def is_document_relevant_openai(user_query, document_json):
-#     """
-#     Asks OpenAI if a document's extracted data is relevant to a user's query.
-#     Returns True if relevant, False otherwise.
-#     """
-#     openai.api_key = current_app.config.get("OPENAI_API_KEY")
-#     if not openai.api_key:
-#         current_app.logger.error("OpenAI API key not configured for AI search.")
-#         return False
-
-#     # To save tokens and time, we just use the raw text content for the check.
-#     # We can reconstruct a simplified text version from the JSON.
-#     try:
-#         data = json.loads(document_json)
-#         # Attempt to find the most content-rich part of the JSON.
-#         # This part might need adjustment based on your exact JSON structure.
-#         document_text = json.dumps(data.get("extracted_data", data))
-#     except (json.JSONDecodeError, TypeError):
-#         # If it's not valid JSON or not a string, use it as is.
-#         document_text = str(document_json)
-
-
-#     # Truncate document text to avoid exceeding token limits and reduce costs.
-#     # 12000 chars is ~3000 tokens, a safe limit for a quick check.
-#     max_chars = 12000
-#     if len(document_text) > max_chars:
-#         document_text = document_text[:max_chars] + "..."
-
-#     prompt = f"""
-#     You are an intelligent document analysis assistant. Your task is to determine if the provided document text contains information that directly answers or relates to the user's query.
-
-#     User's Query: "{user_query}"
-
-#     Document's Extracted Data (in JSON format):
-#     ---
-#     {document_text}
-#     ---
-
-#     Based ONLY on the document's data provided, does it contain a relevant answer to the user's query?
-#     For example, if the query is "customer name is John", the document must contain "John".
-#     If the query is "find invoices over 5000", the document must contain an invoice with an amount over 5000.
-
-#     Respond with a single word and nothing else: 'Yes' or 'No'.
-#     """
-
-#     try:
-#         response = openai.chat.completions.create(
-#             model="gpt-4o",  # Using a powerful model for better accuracy
-#             messages=[
-#                 {"role": "system", "content": "You are a document analysis assistant that responds with only 'Yes' or 'No'."},
-#                 {"role": "user", "content": prompt}
-#             ],
-#             max_tokens=5,    # We only need a single word response
-#             temperature=0.0  # We want a deterministic, factual answer
-#         )
-#         answer = response.choices[0].message.content.strip().lower()
-#         # Check if 'yes' is in the answer for robustness
-#         return 'yes' in answer
-#     except Exception as e:
-#         current_app.logger.error(f"OpenAI API call failed during AI search: {e}")
-#         return False
 
 # ---------------------------------------------------------------------
 # Decorators
@@ -909,23 +679,15 @@ def subadmin_permission_required(permission_key):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # If user is admin (not subadmin), allow access
             if "admin_id" in session:
                 return f(*args, **kwargs)
-
-            # If user is subadmin, check permissions from session
             if "subadmin_id" in session:
-                # Ensure permissions are loaded
                 if "permissions" not in session:
                     load_subadmin_permissions()
-
-                # Check if permissions exist in session
                 if "permissions" in session and session["permissions"]:
                     try:
-                        # Split permission key into module and action
                         module, action = permission_key.split(".")
 
-                        # Check if permission exists and is set to "Yes"
                         if (
                             module in session["permissions"]
                             and action in session["permissions"][module]
@@ -936,11 +698,8 @@ def subadmin_permission_required(permission_key):
                         current_app.logger.error(
                             f"Permission check error for {permission_key}: {e}"
                         )
-
-                # Permission denied - render access denied page
                 return render_template("accessdenied.html"), 403
 
-            # Not logged in as either admin or subadmin
             flash("You need to log in first.", "warning")
             return redirect(url_for("main.admLogin"))
 
@@ -1099,44 +858,6 @@ def supAdmRegistration():
     
     return render_template("supAdmRegistration.html", form=form)
 
-# @main.route("/superadmin/supadmlogin", methods=["GET", "POST"])
-# def supAdmlogin():
-#     form = supAdmLoginForm()
-#     if form.validate_on_submit():
-#         connection = get_db_connection()
-#         try:
-#             with connection.cursor() as cursor:
-#                 cursor.execute(
-#                     "SELECT * FROM superadmin WHERE superadmin_email=%s", (form.email.data,)
-#                 )
-#                 user = cursor.fetchone()
-                
-#             if user and bcrypt.checkpw(
-#                 form.password.data.encode("utf-8"), user['superadmin_password'].encode("utf-8")
-#             ):
-#                 session["sup_adm_id"] = user['superadmin_id']
-#                 session["sup_adm_name"] = user['superadmin_name']
-#                 session["sup_adm_mail"] = user['superadmin_email']
-                
-#                 log_user_activity(
-#                     user['superadmin_id'],
-#                     user['superadmin_name'],
-#                     "Super Admin",
-#                     "Login",
-#                     "Landing Page/Login",
-#                     f"Super Admin logged in, Id: {user['superadmin_id']}"
-#                 )
-                
-#                 return redirect(url_for("main.supAdmDashboard"))
-#             else:
-#                 flash("Login failed. Please check your email and password.", "error")
-                
-#         except Exception as e:
-#             flash(f"Error during login: {str(e)}", "danger")
-#         finally:
-#             connection.close()
-            
-#     return render_template("supAdmLogin.html", form=form)
 
 
 @main.route("/superadmin/supadmdashboard")
@@ -1248,10 +969,6 @@ def supAdmCreateAdmin():
     return render_template("supAdmAdmin.html", form=form, adminlist=adminlist)
 
 
-#
-# PASTE THIS ENTIRE CORRECTED FUNCTION IN app/routes.py
-#
-
 @main.route("/superadmin/supadmactivities")
 @sup_adm_login_required
 def supAdmActivities():
@@ -1269,7 +986,6 @@ def supAdmActivities():
 
     try:
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-            # --- CORRECTION 1: Query the correct table and filter for Super Admin ---
             query = "SELECT * FROM user_activities WHERE user_type = 'Super Admin'"
             
             conditions = []
@@ -1280,7 +996,6 @@ def supAdmActivities():
                 params.append(event_type)
             
             if admin_filter:
-                # --- CORRECTION 2: Use the correct column name 'user_name' ---
                 conditions.append("user_name LIKE %s")
                 params.append(f"%{admin_filter}%")
             
@@ -1291,15 +1006,11 @@ def supAdmActivities():
             if date_to:
                 conditions.append("event_time <= %s")
                 params.append(f"{date_to} 23:59:59")
-
-            # The 'WHERE' is already in the base query, so we start with 'AND'
             if conditions:
                 query += " AND " + " AND ".join(conditions)
 
-            # Use a slightly different approach for count_query to be safe
             count_query = f"SELECT COUNT(*) as total FROM ({query}) as filtered"
             
-            # We pass the full params list to the count query
             cursor.execute(count_query, tuple(params))
             total_result = cursor.fetchone()
             total = total_result['total'] if total_result else 0
@@ -1310,7 +1021,6 @@ def supAdmActivities():
             cursor.execute(query, tuple(params))
             activities = cursor.fetchall()
 
-            # --- CORRECTION 3: Get distinct event types from the correct table ---
             cursor.execute(
                 "SELECT DISTINCT event_type FROM user_activities WHERE user_type = 'Super Admin' ORDER BY event_type"
             )
@@ -1989,114 +1699,6 @@ def delete_tag(tag_id):
 # # ---------------------------------------------------------------------
 
 
-# @main.route("/documents/add-new", methods=["GET", "POST"])
-# @adm_login_required
-# @subadmin_permission_required("DOCUMENTS.create_document")
-# def addNewDocuments():
-#     """
-#     Handles the initial form submission for document analysis.
-#     Performs OCR and AI analysis and returns the extracted data to the client.
-#     """
-#     if request.method == "POST":
-#         # --- This POST logic remains unchanged ---
-#         if "file" not in request.files:
-#             return jsonify({"error": "No file part in the request"}), 400
-#         file = request.files["file"]
-#         if file.filename == "":
-#             return jsonify({"error": "No file selected"}), 400
-
-#         form_data = request.form
-#         title = form_data.get("title")
-#         if not title:
-#             return jsonify({"error": "Title is a required field."}), 400
-
-#         filepath = None
-#         try:
-#             if file and allowed_file(file.filename):
-#                 original_filename = secure_filename(file.filename)
-#                 file_extension = os.path.splitext(original_filename)[1]
-#                 unique_filename = f"{uuid.uuid4().hex}{file_extension}"
-#                 filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], unique_filename)
-#                 file.save(filepath)
-
-#                 session["processing_filepath"] = filepath
-#                 session["original_filename"] = original_filename
-#                 session["unique_filename_for_s3"] = unique_filename
-#                 session["form_data_for_submission"] = dict(form_data)
-
-#                 ocr_engine = form_data.get("ocr_engine", "azure")
-#                 session["form_data_for_submission"]['ocr_engine'] = ocr_engine
-
-#                 raw_text = ""
-#                 if ocr_engine == "tesseract":
-#                     mime_type = magic.from_file(filepath, mime=True)
-#                     raw_text = perform_tesseract_ocr(filepath, mime_type)
-#                 else:
-#                     raw_text = perform_azure_ocr(filepath)
-
-#                 if not raw_text.strip():
-#                     os.remove(filepath)
-#                     session.pop("processing_filepath", None)
-#                     return jsonify({"error": "OCR failed to extract any text from the document."}), 400
-                
-#                 token_count = len(raw_text.split())
-#                 session['form_data_for_submission']['token_count'] = token_count
-
-#                 log_user_activity(
-#                     session.get("admin_id") or session.get("subadmin_id"),
-#                     session.get("admin_name") or session.get("subadmin_name"),
-#                     session.get("user_type"),
-#                     "File Upload",
-#                     "Documents/Add New",
-#                     f"Uploaded document '{original_filename}' for analysis."
-#                 )
-
-#                 analysis_result = analyze_document_with_openai(raw_text)
-#                 return jsonify({
-#                     "message": "Document analyzed successfully. Please review and save.",
-#                     "extracted_data": analysis_result,
-#                 })
-#             else:
-#                 return jsonify({"error": "File type not allowed"}), 400
-#         except ConnectionError as e:
-#             if filepath and os.path.exists(filepath):
-#                 os.remove(filepath)
-#             return jsonify({"error": str(e)}), 500
-#         except Exception as e:
-#             if filepath and os.path.exists(filepath):
-#                 os.remove(filepath)
-#             current_app.logger.error(f"An unexpected error occurred: {e}")
-#             return jsonify({"error": "An internal error occurred. Please try again later."}), 500
-
-#     # --- THIS GET LOGIC IS NEW ---
-#     # On initial page load (GET request), fetch all options for the dropdowns
-#     connection = get_db_connection()
-#     all_categories = []
-#     all_subcategories = []
-#     all_tags = []
-#     try:
-#         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-#             cursor.execute("SELECT category_name FROM categories ORDER BY category_name ASC")
-#             all_categories = cursor.fetchall()
-#             cursor.execute("SELECT sub_category_name FROM sub_categories ORDER BY sub_category_name ASC")
-#             all_subcategories = cursor.fetchall()
-#             cursor.execute("SELECT tag_name FROM tags ORDER BY tag_name ASC")
-#             all_tags = cursor.fetchall()
-#     except Exception as e:
-#         current_app.logger.error(f"Error fetching dropdown data for add new page: {e}")
-#         flash("Could not load dropdown options.", "danger")
-#     finally:
-#         if connection:
-#             connection.close()
-    
-#     return render_template(
-#         "addNewDocuments.html", 
-#         categories=all_categories,
-#         subcategories=all_subcategories,
-#         tags=all_tags
-#     )
-
-# In app/routes.py
 
 @main.route("/documents/add-new", methods=["GET", "POST"])
 @adm_login_required
@@ -2126,25 +1728,18 @@ def addNewDocuments():
                 unique_filename = f"{uuid.uuid4().hex}{file_extension}"
                 filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], unique_filename)
                 file.save(filepath)
-
-                # --- START: MODIFIED SECTION TO HANDLE MULTIPLE TAGS ---
                 
-                # Create a mutable dictionary from the form data
                 form_data_dict = form_data.to_dict()
                 
-                # Explicitly get the list of all selected tags
                 tags_list = form_data.getlist('tags')
                 
-                # Overwrite the 'tags' key in our dictionary with the full list
                 form_data_dict['tags'] = tags_list
 
-                # Store this properly constructed dictionary in the session
                 session["processing_filepath"] = filepath
                 session["original_filename"] = original_filename
                 session["unique_filename_for_s3"] = unique_filename
-                session["form_data_for_submission"] = form_data_dict # Use the corrected dict
+                session["form_data_for_submission"] = form_data_dict 
                 
-                # --- END: MODIFIED SECTION ---
 
                 ocr_engine = form_data.get("ocr_engine", "azure")
                 session["form_data_for_submission"]['ocr_engine'] = ocr_engine
@@ -2190,7 +1785,6 @@ def addNewDocuments():
             current_app.logger.error(f"An unexpected error occurred: {e}")
             return jsonify({"error": "An internal error occurred. Please try again later."}), 500
 
-    # The GET request logic remains unchanged as it was already correct.
     connection = get_db_connection()
     all_categories = []
     all_subcategories = []
@@ -2201,7 +1795,6 @@ def addNewDocuments():
             all_categories = cursor.fetchall()
             cursor.execute("SELECT sub_category_name FROM sub_categories ORDER BY sub_category_name ASC")
             all_subcategories = cursor.fetchall()
-            # Fetch all tags for the dropdown
             cursor.execute("SELECT t_id, tag_name FROM tags ORDER BY tag_name ASC")
             all_tags = cursor.fetchall()
     except Exception as e:
@@ -2218,87 +1811,6 @@ def addNewDocuments():
         tags=all_tags
     )
 
-
-
-# @main.route("/documents/submit", methods=["POST"])
-# @adm_login_required
-# def submitDocument():
-#     """
-#     Handles the final submission after the user has reviewed and edited the extracted data.
-#     """
-#     filepath = session.get("processing_filepath")
-#     form_data = session.get("form_data_for_submission")
-#     # --- CHANGED: Get both filenames from the session ---
-#     original_filename = session.get("original_filename")
-#     unique_filename_for_s3 = session.get("unique_filename_for_s3")
-
-#     if not all([filepath, form_data, original_filename, unique_filename_for_s3]):
-#         return jsonify({"error": "Analysis data not found. Please re-analyze the document."}), 400
-
-#     edited_data_json_str = request.form.get("extracted_data")
-#     if not edited_data_json_str:
-#         return jsonify({"error": "No extracted data provided for submission."}), 400
-
-#     try:
-#         json.loads(edited_data_json_str)
-#     except json.JSONDecodeError:
-#         return jsonify({"error": "Invalid JSON format in the extracted data."}), 400
-
-#     connection = get_db_connection()
-#     try:
-#         file_url = None
-#         with open(filepath, 'rb') as f:
-#             # --- CHANGED: Upload to S3 using the UNIQUE filename ---
-#             file_url = upload_file_to_s3(f, current_app.config.get("AWS_S3_BUCKET"), unique_filename_for_s3)
-
-#         if not file_url:
-#             raise Exception("Failed to upload file to S3.")
-
-#         with connection.cursor() as cursor:
-#             # --- CHANGED: Added original_filename to the INSERT statement ---
-#             sql = """
-#                 INSERT INTO documents (title, category, sub_category, tags, file_path, 
-#                                        extracted_data, ocr_engine, token_count, original_filename)
-#                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-#             """
-#             params = (
-#                 form_data.get("title"),
-#                 form_data.get("category"),
-#                 form_data.get("sub_category"),
-#                 form_data.get("tags"),
-#                 file_url,
-#                 edited_data_json_str,
-#                 form_data.get("ocr_engine"),
-#                 form_data.get("token_count", 0),
-#                 original_filename # The new value to save
-#             )
-#             cursor.execute(sql, params)
-#         connection.commit()
-
-#         log_user_activity(
-#             session.get("admin_id") or session.get("subadmin_id"),
-#             session.get("admin_name") or session.get("subadmin_name"),
-#             session.get("user_type"),
-#             "Create",
-#             "Documents/Submit",
-#             f"Saved new document '{form_data.get('title')}' with S3 URL: {file_url}"
-#         )
-        
-#         return jsonify({"message": "Document and extracted data saved successfully!"})
-
-#     except Exception as e:
-#         connection.rollback()
-#         current_app.logger.error(f"An unexpected error occurred during submission: {e}")
-#         return jsonify({"error": f"An internal error occurred during submission: {str(e)}"}), 500
-#     finally:
-#         if filepath and os.path.exists(filepath):
-#             os.remove(filepath)
-#         # --- CHANGED: Clear all new session variables ---
-#         session.pop("processing_filepath", None)
-#         session.pop("form_data_for_submission", None)
-#         session.pop("original_filename", None)
-#         session.pop("unique_filename_for_s3", None)
-#         connection.close()
 
 @main.route("/documents/submit", methods=["POST"])
 @adm_login_required
@@ -2318,9 +1830,7 @@ def submitDocument():
     edited_data_json_str = request.form.get("extracted_data")
     if not edited_data_json_str:
         return jsonify({"error": "No extracted data provided for submission."}), 400
-    
-    # Retrieve the list of selected tag names from the session data.
-    # It was stored as a list by the addNewDocuments route.
+
     tags_list = form_data.get("tags", [])
 
     try:
@@ -2356,22 +1866,17 @@ def submitDocument():
             )
             cursor.execute(sql, params)
             
-            # --- NEW LOGIC: Get the ID of the new document and link the tags ---
             new_document_id = cursor.lastrowid
             
             if tags_list and new_document_id:
-                # Find the tag IDs for the given tag names to ensure they exist
-                # The format() method is safe here because len(tags_list) is an integer
                 placeholders = ",".join(["%s"] * len(tags_list))
                 sql_find_tags = f"SELECT t_id FROM tags WHERE tag_name IN ({placeholders})"
                 
                 cursor.execute(sql_find_tags, tags_list)
                 tag_ids = [row['t_id'] for row in cursor.fetchall()]
                 
-                # If we found corresponding tags, prepare to insert all links
                 if tag_ids:
                     sql_link_tags = "INSERT INTO document_tags (document_id, tag_id) VALUES (%s, %s)"
-                    # Create a list of tuples for executemany, e.g., [(101, 1), (101, 5)]
                     link_params = [(new_document_id, tag_id) for tag_id in tag_ids]
                     cursor.executemany(sql_link_tags, link_params)
             
@@ -2402,40 +1907,6 @@ def submitDocument():
         connection.close()
 
 
-
-# new for without page reloading 
-# @main.route("/documents/list")
-# @adm_login_required
-# @subadmin_permission_required("DOCUMENTS.view_documents")
-# def documentList():
-#     """Renders the main documents list page. Data will be loaded via JavaScript."""
-#     connection = get_db_connection()
-#     distinct_categories = []
-#     distinct_sub_categories = []
-#     distinct_tags = []
-#     try:
-#         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-#             # Fetch filter options to populate the dropdowns initially
-#             cursor.execute("SELECT DISTINCT category FROM documents WHERE category IS NOT NULL AND category != '' ORDER BY category")
-#             distinct_categories = [row["category"] for row in cursor.fetchall()]
-#             cursor.execute("SELECT DISTINCT sub_category FROM documents WHERE sub_category IS NOT NULL AND sub_category != '' ORDER BY sub_category")
-#             distinct_sub_categories = [row["sub_category"] for row in cursor.fetchall()]
-#             cursor.execute("SELECT DISTINCT tags FROM documents WHERE tags IS NOT NULL AND tags != '' ORDER BY tags")
-#             distinct_tags = [row["tags"] for row in cursor.fetchall()]
-#     except Exception as e:
-#         current_app.logger.error(f"Error fetching filter options: {e}")
-#         flash("An error occurred while fetching filter options.", "danger")
-#     finally:
-#         connection.close()
-
-#     return render_template(
-#         "documentsList.html",
-#         documents=[],  # Start with an empty list; JS will fetch the data
-#         distinct_categories=distinct_categories,
-#         distinct_sub_categories=distinct_sub_categories,
-#         distinct_tags=distinct_tags,
-#     )
-
 @main.route("/documents/list")
 @adm_login_required
 @subadmin_permission_required("DOCUMENTS.view_documents")
@@ -2447,18 +1918,14 @@ def documentList():
     distinct_tags = []
     try:
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-            # Fetch filter options to populate the dropdowns initially
-            
-            # This part is correct and remains unchanged
+           
             cursor.execute("SELECT DISTINCT category FROM documents WHERE category IS NOT NULL AND category != '' ORDER BY category")
             distinct_categories = [row["category"] for row in cursor.fetchall()]
             
-            # This part is also correct and remains unchanged
+            
             cursor.execute("SELECT DISTINCT sub_category FROM documents WHERE sub_category IS NOT NULL AND sub_category != '' ORDER BY sub_category")
             distinct_sub_categories = [row["sub_category"] for row in cursor.fetchall()]
-            
-            # --- CORRECTED LOGIC FOR TAGS ---
-            # Fetch all available tags directly from the 'tags' table.
+
             cursor.execute("SELECT tag_name FROM tags ORDER BY tag_name ASC")
             distinct_tags = [row["tag_name"] for row in cursor.fetchall()]
 
@@ -2471,66 +1938,11 @@ def documentList():
 
     return render_template(
         "documentsList.html",
-        documents=[],  # Start with an empty list; JS will fetch the data
+        documents=[],  
         distinct_categories=distinct_categories,
         distinct_sub_categories=distinct_sub_categories,
-        distinct_tags=distinct_tags, # Pass the complete list of tags to the template
+        distinct_tags=distinct_tags, 
     )
-
-
-
-# @main.route("/api/search-documents")
-# @adm_login_required
-# def api_search_documents():
-#     """API endpoint to fetch and filter documents, returns JSON."""
-#     search_query = request.args.get("search", "")
-#     category_filter = request.args.get("category", "")
-#     sub_category_filter = request.args.get("sub_category", "")
-#     tags_filter = request.args.get("tags", "")
-
-#     connection = get_db_connection()
-#     documents = []
-#     try:
-#         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-#             base_sql = "SELECT * FROM documents"
-#             conditions, params = [], []
-
-#             if search_query:
-#                 search_like = f"%{search_query}%"
-#                 conditions.append(
-#                     "(title LIKE %s OR description LIKE %s OR tags LIKE %s OR CAST(extracted_data AS CHAR) LIKE %s OR original_filename LIKE %s)"
-#                 )
-#                 params.extend([search_like, search_like, search_like, search_like, search_like])
-            
-#             if category_filter:
-#                 conditions.append("category = %s")
-#                 params.append(category_filter)
-#             if sub_category_filter:
-#                 conditions.append("sub_category = %s")
-#                 params.append(sub_category_filter)
-#             if tags_filter:
-#                 conditions.append("tags = %s")
-#                 params.append(tags_filter)
-
-#             if conditions:
-#                 base_sql += " WHERE " + " AND ".join(conditions)
-            
-#             base_sql += " ORDER BY created_at DESC"
-#             cursor.execute(base_sql, tuple(params))
-#             documents = cursor.fetchall()
-            
-#             # Convert datetime objects to strings for JSON compatibility
-#             for doc in documents:
-#                 if 'created_at' in doc and doc['created_at']:
-#                     doc['created_at'] = doc['created_at'].strftime('%d-%m-%Y %I:%M %p')
-
-#     except Exception as e:
-#         current_app.logger.error(f"Error fetching document list via API: {e}")
-#         return jsonify({"error": "An error occurred while fetching documents."}), 500
-#     finally:
-#         connection.close()
-        
-#     return jsonify(documents)
 
 
 @main.route("/api/search-documents")
@@ -2546,7 +1958,7 @@ def api_search_documents():
     documents = []
     try:
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-            # --- MODIFIED SQL: Join tables and use GROUP_CONCAT for tags ---
+            
             base_sql = """
                 SELECT 
                     d.id, d.title, d.category, d.sub_category, d.file_path,
@@ -2561,7 +1973,7 @@ def api_search_documents():
 
             if search_query:
                 search_like = f"%{search_query}%"
-                # Updated search condition (removed description and tags columns)
+                
                 conditions.append(
                     "(d.title LIKE %s OR CAST(d.extracted_data AS CHAR) LIKE %s OR d.original_filename LIKE %s)"
                 )
@@ -2577,14 +1989,12 @@ def api_search_documents():
             if conditions:
                 base_sql += " WHERE " + " AND ".join(conditions)
             
-            # --- ESSENTIAL: Add GROUP BY for GROUP_CONCAT to work per document ---
+            
             base_sql += " GROUP BY d.id"
 
-            # --- NEW: Use HAVING clause to filter by tag after grouping ---
+            
             if tags_filter:
-                # FIND_IN_SET is a MySQL function to find a string within a comma-separated list
-                # Note: This checks against the raw, non-spaced list. 
-                # For safety with 'SEPARATOR ', it's better to use LIKE.
+               
                 base_sql += " HAVING tags LIKE %s"
                 params.append(f"%{tags_filter}%")
 
@@ -2593,7 +2003,7 @@ def api_search_documents():
             cursor.execute(base_sql, tuple(params))
             documents = cursor.fetchall()
             
-            # Convert datetime objects to strings for JSON compatibility
+           
             for doc in documents:
                 if 'created_at' in doc and doc['created_at']:
                     doc['created_at'] = doc['created_at'].strftime('%d-%m-%Y %I:%M %p')
@@ -2608,90 +2018,6 @@ def api_search_documents():
     return jsonify(documents)
 
 
-# @main.route("/documents/edit/<int:doc_id>", methods=["GET", "POST"])
-# @adm_login_required
-# @subadmin_permission_required("DOCUMENTS.edit_document")
-# def editDocument(doc_id):
-#     connection = get_db_connection()
-#     try:
-#         if request.method == "POST":
-#             # --- This POST logic remains unchanged ---
-#             form_data = request.form
-#             title = form_data.get("title")
-#             extracted_data_str = form_data.get("extracted_data")
-
-#             if not title:
-#                 flash("Title is a required field.", "error")
-#                 with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-#                     cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
-#                     doc = cursor.fetchone()
-#                 return render_template("editDocument.html", doc=doc)
-
-#             try:
-#                 json.loads(extracted_data_str)
-#             except json.JSONDecodeError:
-#                 flash("Error: Extracted data is not in a valid JSON format.", "danger")
-#                 with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-#                     cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
-#                     doc = cursor.fetchone()
-#                     doc['extracted_data'] = extracted_data_str 
-#                 return render_template("editDocument.html", doc=doc)
-            
-#             with connection.cursor() as cursor:
-#                 sql = "UPDATE documents SET title = %s, category = %s, sub_category = %s, tags = %s, extracted_data = %s WHERE id = %s"
-#                 params = (title, form_data.get("category"), form_data.get("sub_category"), form_data.get("tags"), extracted_data_str, doc_id)
-#                 cursor.execute(sql, params)
-#             connection.commit()
-
-#             log_user_activity(
-#                 session.get("admin_id") or session.get("subadmin_id"),
-#                 session.get("admin_name") or session.get("subadmin_name"),
-#                 session.get("user_type"), "Edit", "Documents/Edit",
-#                 f"Edited document '{title}' with ID: {doc_id}"
-#             )
-#             flash("Document updated successfully!", "success")
-#             return redirect(url_for("main.documentList"))
-        
-#         else: # --- THIS GET LOGIC IS UPDATED ---
-#             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-#                 # 1. Fetch the specific document to edit
-#                 cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
-#                 doc = cursor.fetchone()
-#                 if not doc:
-#                     flash("Document not found.", "error")
-#                     return redirect(url_for("main.documentList"))
-                
-#                 # Pretty-print the JSON for readability
-#                 try:
-#                     parsed_json = json.loads(doc['extracted_data'])
-#                     doc['extracted_data'] = json.dumps(parsed_json, indent=4)
-#                 except (json.JSONDecodeError, TypeError):
-#                     pass
-                
-#                 # 2. Fetch all options for the dropdowns
-#                 cursor.execute("SELECT category_name FROM categories ORDER BY category_name ASC")
-#                 all_categories = cursor.fetchall()
-#                 cursor.execute("SELECT sub_category_name FROM sub_categories ORDER BY sub_category_name ASC")
-#                 all_subcategories = cursor.fetchall()
-#                 cursor.execute("SELECT tag_name FROM tags ORDER BY tag_name ASC")
-#                 all_tags = cursor.fetchall()
-                    
-#             return render_template(
-#                 "editDocument.html", 
-#                 doc=doc,
-#                 categories=all_categories,
-#                 subcategories=all_subcategories,
-#                 tags=all_tags
-#             )
-
-#     except Exception as e:
-#         connection.rollback()
-#         current_app.logger.error(f"An unexpected error occurred: {e}")
-#         flash("An error occurred while editing the document.", "danger")
-#         return redirect(url_for("main.documentList"))
-#     finally:
-#         if connection:
-#             connection.close()
 
 @main.route("/documents/edit/<int:doc_id>", methods=["GET", "POST"])
 @adm_login_required
@@ -2700,17 +2026,17 @@ def editDocument(doc_id):
     connection = get_db_connection()
     try:
         if request.method == "POST":
-            # --- START: MODIFIED POST LOGIC ---
+            
             form_data = request.form
             title = form_data.get("title")
             extracted_data_str = form_data.get("extracted_data")
             
-            # Use getlist() to capture all selected tags from the <select multiple>
+           
             tags_list = request.form.getlist("tags")
 
             if not title:
                 flash("Title is a required field.", "error")
-                # It's better to redirect back to the edit page on validation failure
+               
                 return redirect(url_for('main.editDocument', doc_id=doc_id))
 
             try:
@@ -2720,7 +2046,7 @@ def editDocument(doc_id):
                 return redirect(url_for('main.editDocument', doc_id=doc_id))
             
             with connection.cursor() as cursor:
-                # 1. Update the main document details (tags column is removed)
+                
                 sql_update_doc = """
                     UPDATE documents 
                     SET title = %s, category = %s, sub_category = %s, extracted_data = %s 
@@ -2735,27 +2061,24 @@ def editDocument(doc_id):
                 )
                 cursor.execute(sql_update_doc, params_doc)
 
-                # --- 2. Update Tags using the "delete-then-add" strategy ---
-                # First, remove all existing tag links for this document
                 cursor.execute("DELETE FROM document_tags WHERE document_id = %s", (doc_id,))
 
-                # If the user selected any tags, add the new links
+                
                 if tags_list:
-                    # Find the IDs for the submitted tag names
+                    
                     placeholders = ",".join(["%s"] * len(tags_list))
                     sql_find_tags = f"SELECT t_id FROM tags WHERE tag_name IN ({placeholders})"
                     cursor.execute(sql_find_tags, tags_list)
                     tag_ids = [row['t_id'] for row in cursor.fetchall()]
 
-                    # Insert the new links into the junction table
+                    
                     if tag_ids:
                         sql_link_tags = "INSERT INTO document_tags (document_id, tag_id) VALUES (%s, %s)"
                         link_params = [(doc_id, tag_id) for tag_id in tag_ids]
                         cursor.executemany(sql_link_tags, link_params)
 
             connection.commit()
-            # --- END: MODIFIED POST LOGIC ---
-
+           
             log_user_activity(
                 session.get("admin_id") or session.get("subadmin_id"),
                 session.get("admin_name") or session.get("subadmin_name"),
@@ -2765,34 +2088,33 @@ def editDocument(doc_id):
             flash("Document updated successfully!", "success")
             return redirect(url_for("main.documentList"))
         
-        else: # --- START: MODIFIED GET LOGIC ---
+        else: 
             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-                # 1. Fetch the specific document to edit
+                
                 cursor.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
                 doc = cursor.fetchone()
                 if not doc:
                     flash("Document not found.", "error")
                     return redirect(url_for("main.documentList"))
                 
-                # --- 2. Fetch the document's CURRENTLY associated tags ---
+                
                 cursor.execute("""
                     SELECT t.tag_name 
                     FROM tags t
                     INNER JOIN document_tags dt ON t.t_id = dt.tag_id
                     WHERE dt.document_id = %s
                 """, (doc_id,))
-                # Store the list of tag names directly in the doc dictionary
-                # The template will use this to pre-select options
+               
                 doc['tags'] = [row['tag_name'] for row in cursor.fetchall()]
 
-                # Pretty-print the JSON for readability in the textarea
+                
                 try:
                     parsed_json = json.loads(doc['extracted_data'])
                     doc['extracted_data'] = json.dumps(parsed_json, indent=4)
                 except (json.JSONDecodeError, TypeError):
-                    pass # If data is not valid JSON, leave it as is
+                    pass 
                 
-                # 3. Fetch all possible options for the dropdowns
+                
                 cursor.execute("SELECT category_name FROM categories ORDER BY category_name ASC")
                 all_categories = cursor.fetchall()
                 cursor.execute("SELECT sub_category_name FROM sub_categories ORDER BY sub_category_name ASC")
@@ -2805,9 +2127,8 @@ def editDocument(doc_id):
                 doc=doc,
                 categories=all_categories,
                 subcategories=all_subcategories,
-                all_tags=all_tags # Renamed to prevent conflict with doc['tags']
+                all_tags=all_tags 
             )
-            # --- END: MODIFIED GET LOGIC ---
 
     except Exception as e:
         connection.rollback()
@@ -2818,47 +2139,7 @@ def editDocument(doc_id):
         if connection:
             connection.close()
 
-# @main.route("/documents/delete/<int:doc_id>", methods=["POST"])
-# @adm_login_required
-# @subadmin_permission_required("DOCUMENTS.delete_document")
-# def deleteDocument(doc_id):
-#     connection = get_db_connection()
-#     file_path = None
-#     try:
-#         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-#             cursor.execute("SELECT file_path FROM documents WHERE id = %s", (doc_id,))
-#             doc = cursor.fetchone()
 
-#             if not doc:
-#                 flash("Document not found.", "error")
-#                 return redirect(url_for("main.documentList"))
-            
-#             file_path = doc.get("file_path")
-            
-#             cursor.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
-#         connection.commit()
-
-#         # Extract the key (filename) from the S3 URL
-#         if file_path:
-#             file_key = file_path.split("/")[-1]
-#             delete_file_from_s3(file_key, current_app.config.get("AWS_S3_BUCKET"))
-
-#         log_user_activity(
-#             session.get("admin_id") or session.get("subadmin_id"),
-#             session.get("admin_name") or session.get("subadmin_name"),
-#             session.get("user_type"),
-#             "Delete",
-#             "Documents/Delete",
-#             f"Deleted document with ID: {doc_id}"
-#         )
-
-#         flash("Document deleted successfully!", "success")
-#     except Exception as e:
-#         connection.rollback()
-#         flash(f"An error occurred: {str(e)}", "error")
-#     finally:
-#         connection.close()
-#     return redirect(url_for("main.documentList"))
 
 @main.route("/documents/delete/<int:doc_id>", methods=["POST"])
 @adm_login_required
@@ -2868,7 +2149,7 @@ def deleteDocument(doc_id):
     file_path = None
     try:
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-            # First, find the document to get its S3 file path for later deletion
+           
             cursor.execute("SELECT file_path FROM documents WHERE id = %s", (doc_id,))
             doc = cursor.fetchone()
 
@@ -2878,13 +2159,12 @@ def deleteDocument(doc_id):
             
             file_path = doc.get("file_path")
             
-            # This single command deletes the document. 
-            # The database's "ON DELETE CASCADE" automatically cleans up the links in 'document_tags'.
+            
             cursor.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
         
         connection.commit()
 
-        # After the database transaction is successful, delete the file from S3
+        
         if file_path:
             file_key = file_path.split("/")[-1]
             delete_file_from_s3(file_key, current_app.config.get("AWS_S3_BUCKET"))
@@ -3109,7 +2389,7 @@ def editRole(role_id):
             flash(f'Role "{role_name}" updated successfully!', "success")
             return redirect(url_for("main.usersRoles"))
 
-        else: # GET request
+        else:
             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                 cursor.execute(
                     "SELECT r_id, role_name, permissions FROM subadminroles WHERE r_id = %s",
@@ -3220,87 +2500,6 @@ def userList():
         connection.close()
 
 
-# @main.route("/users/create", methods=["GET", "POST"])
-# @adm_login_required
-# @subadmin_permission_required("USERS.create_users")
-# def createUser():
-#     """
-#     Handles the creation of a new user.
-#     """
-#     connection = get_db_connection()
-    
-#     try:
-#         if request.method == "POST":
-#             name = request.form.get("name")
-#             email = request.form.get("email")
-#             username = request.form.get("username")
-#             password = request.form.get("password")
-#             confirm_password = request.form.get("confirm_password")
-#             role_id = request.form.get("role_id")
-#             role_name = request.form.get("role_name")
-
-#             if not all([name, email, username, password, confirm_password, role_id]):
-#                 flash("All fields are required.", "danger")
-#                 return redirect(url_for("main.createUser"))
-
-#             if password != confirm_password:
-#                 flash("Passwords do not match.", "danger")
-#                 return redirect(url_for("main.createUser"))
-
-#             hashed_password = bcrypt.hashpw(
-#                 password.encode("utf-8"), bcrypt.gensalt()
-#             ).decode("utf-8")
-            
-#             with connection.cursor() as cursor:
-#                 cursor.execute("SELECT * FROM superadmin WHERE superadmin_email=%s", (email,))
-#                 if cursor.fetchone():
-#                     flash(f'Email "{email}" already exist in super admin portal . Please choose another.')
-                
-#                 cursor.execute("SELECT * FROM admin WHERE admin_email=%s", (email,))
-#                 if cursor.fetchone():
-#                     flash(f'Email "{email}" already exist in admin portal . Please choose another.')
-
-#             with connection.cursor() as cursor:
-#                 sql = "INSERT INTO subadmin (subadmin_name, subadmin_email, subadmin_username, subadmin_password, role_id) VALUES (%s, %s, %s, %s, %s)"
-#                 cursor.execute(sql, (name, email, username, hashed_password, role_id))
-#             connection.commit()
-
-#             log_user_activity(
-#                 session.get("admin_id") or session.get("subadmin_id"),
-#                 session.get("admin_name") or session.get("subadmin_name"),
-#                 session.get("user_type"),
-#                 "Create",
-#                 "Users/User Management",
-#                 f"Created new user '{name}' with email '{email}' and role_id '{role_id}'"
-#             )
-
-#             flash(f'User "{name}" created successfully!', "success")
-#             return redirect(url_for("main.userList"))
-
-#         # For GET request, fetch roles to populate the dropdown
-#         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-#             cursor.execute(
-#                 "SELECT r_id, role_name FROM subadminroles ORDER BY role_name ASC"
-#             )
-#             all_roles = cursor.fetchall()
-#         return render_template("create_edit_user.html", user=None, all_roles=all_roles)
-
-#     except pymysql.err.IntegrityError as e:
-#         connection.rollback()
-#         if "email" in str(e).lower():
-#             flash(f'An account with the email "{email}" already exists.', "danger")
-#         elif "username" in str(e).lower():
-#             flash(f'An account with the username "{username}" already exists.', "danger")
-#         else:
-#             flash("A database error occurred. The username or email might already be taken.", "danger")
-#         return redirect(url_for("main.createUser"))
-#     except Exception as e:
-#         connection.rollback()
-#         current_app.logger.error(f"Error creating user: {e}")
-#         flash("An error occurred while creating the user.", "danger")
-#         return redirect(url_for("main.createUser"))
-#     finally:
-#         connection.close()
 
 @main.route("/users/create", methods=["GET", "POST"])
 @adm_login_required
@@ -3328,27 +2527,27 @@ def createUser():
                 flash("Passwords do not match.", "danger")
                 return redirect(url_for("main.createUser"))
 
-            # Check email uniqueness across ALL user tables
+            
             with connection.cursor() as cursor:
-                # Check superadmin table
+                
                 cursor.execute("SELECT superadmin_email FROM superadmin WHERE superadmin_email=%s", (email,))
                 if cursor.fetchone():
                     flash(f'Email "{email}" already exists in super admin portal. Please choose another.', "danger")
                     return redirect(url_for("main.createUser"))
                 
-                # Check admin table
+                
                 cursor.execute("SELECT admin_email FROM admin WHERE admin_email=%s", (email,))
                 if cursor.fetchone():
                     flash(f'Email "{email}" already exists in admin portal. Please choose another.', "danger")
                     return redirect(url_for("main.createUser"))
                 
-                # Check subadmin table (the table we're inserting into)
+                
                 cursor.execute("SELECT subadmin_email FROM subadmin WHERE subadmin_email=%s", (email,))
                 if cursor.fetchone():
                     flash(f'Email "{email}" already exists in subadmin portal. Please choose another.', "danger")
                     return redirect(url_for("main.createUser"))
                 
-                # Check username uniqueness in subadmin table
+               
                 cursor.execute("SELECT subadmin_username FROM subadmin WHERE subadmin_username=%s", (username,))
                 if cursor.fetchone():
                     flash(f'Username "{username}" is already taken. Please choose another.', "danger")
@@ -3358,7 +2557,7 @@ def createUser():
                 password.encode("utf-8"), bcrypt.gensalt()
             ).decode("utf-8")
             
-            # Insert the new user
+            
             with connection.cursor() as cursor:
                 sql = "INSERT INTO subadmin (subadmin_name, subadmin_email, subadmin_username, subadmin_password, role_id) VALUES (%s, %s, %s, %s, %s)"
                 cursor.execute(sql, (name, email, username, hashed_password, role_id))
@@ -3376,7 +2575,7 @@ def createUser():
             flash(f'User "{name}" created successfully!', "success")
             return redirect(url_for("main.userList"))
 
-        # For GET request, fetch roles to populate the dropdown
+        
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute(
                 "SELECT r_id, role_name FROM subadminroles ORDER BY role_name ASC"
@@ -3402,78 +2601,6 @@ def createUser():
         connection.close()
 
 
-# @main.route("/users/edit/<int:user_id>", methods=["GET", "POST"])
-# @adm_login_required
-# @subadmin_permission_required("USERS.edit_users")
-# def editUser(user_id):
-#     """
-#     Handles editing an existing user.
-#     """
-#     connection = get_db_connection()
-#     try:
-#         if request.method == "POST":
-#             name = request.form.get("name")
-#             email = request.form.get("email")
-#             username = request.form.get("username")
-#             password = request.form.get("password")
-#             confirm_password = request.form.get("confirm_password")
-#             role_id = request.form.get("role_id")
-
-#             with connection.cursor() as cursor:
-#                 if password:
-#                     if password != confirm_password:
-#                         flash("New passwords do not match.", "danger")
-#                         return redirect(url_for("main.editUser", user_id=user_id))
-                        
-#                     hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-                    
-#                     sql = "UPDATE subadmin SET subadmin_name=%s, subadmin_email=%s, subadmin_username=%s, subadmin_password=%s, role_id=%s WHERE subadmin_id=%s"
-#                     cursor.execute(
-#                         sql, (name, email, username, hashed_password, role_id, user_id)
-#                     )
-#                 else:
-#                     sql = "UPDATE subadmin SET subadmin_name=%s, subadmin_email=%s, subadmin_username=%s, role_id=%s WHERE subadmin_id=%s"
-#                     cursor.execute(sql, (name, email, username, role_id, user_id))
-        
-#             connection.commit()
-            
-#             log_user_activity(
-#                 session.get("admin_id") or session.get("subadmin_id"),
-#                 session.get("admin_name") or session.get("subadmin_name"),
-#                 session.get("user_type"),
-#                 "Edit",
-#                 "Users/User Management",
-#                 f"Edited user '{name}' with ID: {user_id}"
-#             )
-            
-#             flash(f'User "{name}" updated successfully!', "success")
-#             return redirect(url_for("main.userList"))
-
-#         else: # GET request
-#             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-#                 cursor.execute("SELECT * FROM subadmin WHERE subadmin_id = %s", (user_id,))
-#                 user = cursor.fetchone()
-#                 if not user:
-#                     flash("User not found.", "danger")
-#                     return redirect(url_for("main.userList"))
-
-#                 cursor.execute("SELECT r_id, role_name FROM subadminroles ORDER BY role_name ASC")
-#                 all_roles = cursor.fetchall()
-                
-#             return render_template("create_edit_user.html", user=user, all_roles=all_roles)
-
-#     except pymysql.err.IntegrityError:
-#         connection.rollback()
-#         flash("That email or username is already in use by another account.", "danger")
-#         return redirect(url_for("main.editUser", user_id=user_id))
-#     except Exception as e:
-#         connection.rollback()
-#         current_app.logger.error(f"Error editing user {user_id}: {e}")
-#         flash("An error occurred while editing the user.", "danger")
-#         return redirect(url_for("main.userList"))
-#     finally:
-#         connection.close()
-
 @main.route("/users/edit/<int:user_id>", methods=["GET", "POST"])
 @adm_login_required
 @subadmin_permission_required("USERS.edit_users")
@@ -3491,7 +2618,7 @@ def editUser(user_id):
             confirm_password = request.form.get("confirm_password")
             role_id = request.form.get("role_id")
 
-            # Validate required fields
+            
             if not all([name, email, username, role_id]):
                 flash("All fields except password are required.", "danger")
                 return redirect(url_for("main.editUser", user_id=user_id))
@@ -3500,33 +2627,33 @@ def editUser(user_id):
                 flash("New passwords do not match.", "danger")
                 return redirect(url_for("main.editUser", user_id=user_id))
 
-            # Check email uniqueness across ALL user tables (excluding current user)
+            
             with connection.cursor() as cursor:
-                # Check superadmin table
+                
                 cursor.execute("SELECT superadmin_email FROM superadmin WHERE superadmin_email=%s", (email,))
                 if cursor.fetchone():
                     flash(f'Email "{email}" already exists in super admin portal. Please choose another.', "danger")
                     return redirect(url_for("main.editUser", user_id=user_id))
                 
-                # Check admin table
+               
                 cursor.execute("SELECT admin_email FROM admin WHERE admin_email=%s", (email,))
                 if cursor.fetchone():
                     flash(f'Email "{email}" already exists in admin portal. Please choose another.', "danger")
                     return redirect(url_for("main.editUser", user_id=user_id))
                 
-                # Check subadmin table (excluding current user)
+                
                 cursor.execute("SELECT subadmin_id, subadmin_email FROM subadmin WHERE subadmin_email=%s AND subadmin_id != %s", (email, user_id))
                 if cursor.fetchone():
                     flash(f'Email "{email}" already exists in subadmin portal. Please choose another.', "danger")
                     return redirect(url_for("main.editUser", user_id=user_id))
                 
-                # Check username uniqueness in subadmin table (excluding current user)
+                
                 cursor.execute("SELECT subadmin_id, subadmin_username FROM subadmin WHERE subadmin_username=%s AND subadmin_id != %s", (username, user_id))
                 if cursor.fetchone():
                     flash(f'Username "{username}" is already taken. Please choose another.', "danger")
                     return redirect(url_for("main.editUser", user_id=user_id))
 
-            # Update the user
+            
             with connection.cursor() as cursor:
                 if password:
                     hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -3553,7 +2680,7 @@ def editUser(user_id):
             flash(f'User "{name}" updated successfully!', "success")
             return redirect(url_for("main.userList"))
 
-        else: # GET request
+        else: 
             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                 cursor.execute("SELECT * FROM subadmin WHERE subadmin_id = %s", (user_id,))
                 user = cursor.fetchone()
