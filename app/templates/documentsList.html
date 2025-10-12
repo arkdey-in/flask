@@ -112,14 +112,13 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // --- Element Selectors ---
+        // --- Element Selectors (Unchanged) ---
         const tableBody = document.getElementById('document-table-body');
         const gridView = document.getElementById('gridView');
         const viewerModal = new bootstrap.Modal(document.getElementById('documentViewerModal'));
         const modalTitle = document.getElementById('documentViewerModalLabel');
         const modalBody = document.getElementById('documentViewerBody');
         const modalElement = document.getElementById('documentViewerModal');
-        
         const filterForm = document.getElementById('filter-form');
         const searchInput = document.getElementById('search-input');
         const categoryFilter = document.getElementById('category-filter');
@@ -132,7 +131,6 @@
         listTab.addEventListener('click', () => { listView.classList.remove('d-none'); gridView.classList.add('d-none'); listTab.classList.add('active'); gridTab.classList.remove('active'); });
         gridTab.addEventListener('click', () => { gridView.classList.remove('d-none'); listView.classList.add('d-none'); gridTab.classList.add('active'); listTab.classList.remove('active'); });
 
-        // --- Main Data Fetching and Rendering Function ---
         async function fetchAndRenderDocuments() {
             const params = new URLSearchParams({ search: searchInput.value, category: categoryFilter.value, sub_category: subcategoryFilter.value, tags: tagsFilter.value });
             tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Loading documents...</td></tr>';
@@ -151,33 +149,30 @@
                     gridView.innerHTML = '<div class="col-12 text-center py-4">No documents found.</div>';
                 } else {
                     documents.forEach(doc => {
-                        // --- START: MODIFIED TAG RENDERING LOGIC ---
-                        // This function turns a string "TagA, TagB" into styled HTML badges
                         const createTagsHtml = (tagsString) => {
                             if (!tagsString) return 'N/A';
                             return `<div class="tags-container">` +
-                                tagsString.split(',')
-                                          .map(tag => `<span class="tag-badge">${tag.trim()}</span>`)
-                                          .join('') +
+                                tagsString.split(',').map(tag => `<span class="tag-badge">${tag.trim()}</span>`).join('') +
                                 `</div>`;
                         };
                         const tagsHtml = createTagsHtml(doc.tags);
-                        // --- END: MODIFIED TAG RENDERING LOGIC ---
 
+                        // --- START: MODIFIED SECTION ---
                         const listRowHtml = `
                             <tr>
-                                <td>${doc.created_at || 'N/A'}</td>
-                                <td>${doc.title || ''}</td>
+                                <td class="text-nowrap">${doc.created_at || 'N/A'}</td>
+                                <td class="title-truncate" title="${doc.title || ''}">${doc.title || ''}</td>
                                 <td>${doc.category || ''}</td>
                                 <td>${doc.sub_category || ''}</td>
-                                <td>${tagsHtml}</td> <td>
-                                    <p class="mb-1">${doc.original_filename || 'N/A'}</p>
+                                <td>${tagsHtml}</td>
+                                <td>
+                                    <p class="mb-1 filename-truncate" title="${doc.original_filename || ''}">${doc.original_filename || 'N/A'}</p>
                                     <button type="button" class="btn-action btn-view btn-sm view-doc-btn" 
                                             data-file-url="${doc.file_path}" data-file-title="${doc.title || 'Document'}">
                                         <i class="material-icons-outlined">visibility</i> View
                                     </button>
                                 </td>
-                                <td>
+                                <td class="text-nowrap">
                                     <a href="/documents/edit/${doc.id}" class="btn-action btn-edit"><i class="material-icons-outlined">edit</i>Edit</a>
                                     <form action="/documents/delete/${doc.id}" method="POST" class="d-inline-block" onsubmit="return confirm('Are you sure you want to delete this document?');">
                                         <button type="submit" class="btn-action btn-delete"><i class="material-icons-outlined">delete</i>Delete</button>
@@ -191,14 +186,15 @@
                                 <div class="card h-100 shadow-sm border-0 document-card">
                                     <div class="card-body d-flex flex-column text-center">
                                         <img src="{{ url_for('static', filename='me/PDF_file_icon.svg.png') }}" alt="PDF" class="img-fluid mb-3 mx-auto" style="width:70px;">
-                                        <h5 class="card-title">${doc.title || ''}</h5>
+                                        <h5 class="card-title title-truncate" title="${doc.title || ''}">${doc.title || ''}</h5>
                                         <p class="text-muted small mb-2">${doc.created_at || 'N/A'}</p>
                                         <div class="mt-auto">
                                             <p class="mb-2 text-start">
                                                 <small><strong>Category:</strong> ${doc.category || ''}</small><br>
                                                 <small><strong>Sub Category:</strong> ${doc.sub_category || ''}</small>
                                             </p>
-                                            <div class="mb-3">${tagsHtml}</div> <button type="button" class="btn btn-sm btn-grd-primary mb-2 view-doc-btn" 
+                                            <div class="mb-3">${tagsHtml}</div>
+                                            <button type="button" class="btn btn-sm btn-grd-primary mb-2 view-doc-btn" 
                                                     data-file-url="${doc.file_path}" data-file-title="${doc.title || 'Document'}">
                                                 View Document
                                             </button>
@@ -218,6 +214,7 @@
                                     </div>
                                 </div>
                             </div>`;
+                        // --- END: MODIFIED SECTION ---
                         gridView.insertAdjacentHTML('beforeend', gridCardHtml);
                     });
                 }
@@ -228,17 +225,15 @@
             }
         }
 
-        // --- Document Viewer Modal Logic (Unchanged) ---
+        // Document Viewer Modal and Event Listeners remain unchanged
         document.body.addEventListener('click', function(event) {
             if (event.target.classList.contains('view-doc-btn') || event.target.closest('.view-doc-btn')) {
                 const button = event.target.closest('.view-doc-btn');
                 const fileUrl = button.dataset.fileUrl;
                 const fileTitle = button.dataset.fileTitle;
                 const fileExtension = fileUrl ? fileUrl.split('.').pop().toLowerCase() : '';
-
                 modalTitle.textContent = fileTitle;
                 modalBody.innerHTML = ''; 
-
                 if (!fileUrl) {
                     modalBody.innerHTML = '<p class="text-center p-5">File URL is missing.</p>';
                 } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(fileExtension)) {
@@ -260,7 +255,6 @@
             modalBody.innerHTML = '';
         });
 
-        // --- Event Listeners & Initial Load ---
         filterForm.addEventListener('submit', (event) => { event.preventDefault(); fetchAndRenderDocuments(); });
         [categoryFilter, subcategoryFilter, tagsFilter].forEach(filter => { filter.addEventListener('change', fetchAndRenderDocuments); });
         fetchAndRenderDocuments();
@@ -268,43 +262,38 @@
 </script>
 
 <style>
-    .custom-tabs .nav-link { 
-        color: #555; 
-        font-weight: 500; 
-        border: none; 
-        border-bottom: 2px solid transparent; 
-        margin: 0 10px; 
+    /* Existing styles remain unchanged */
+    .custom-tabs .nav-link { color: #555; font-weight: 500; border: none; border-bottom: 2px solid transparent; margin: 0 10px; }
+    .custom-tabs .nav-link.active { color: #0d6efd; border-bottom: 2px solid #0d6efd; }
+    .document-card { border-radius: 10px; transition: transform .2s ease-in-out, box-shadow .2s ease-in-out; }
+    .document-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+    .tags-container { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 5px; }
+    .tag-badge { background-color: #e7f3ff; color: #0d6efd; padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; border: 1px solid #bde0fe; white-space: nowrap; }
+
+    /* --- START: NEW CSS FOR TRUNCATION --- */
+    .filename-truncate {
+        max-width: 250px; /* Adjust this width based on your layout */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 4px !important; /* Adjusted margin for better alignment */
+        vertical-align: middle; /* Helps align with button if needed */
     }
-    .custom-tabs .nav-link.active { 
-        color: #0d6efd; 
-        border-bottom: 2px solid #0d6efd; 
-    }
-    .document-card { 
-        border-radius: 10px; 
-        transition: transform .2s ease-in-out, box-shadow .2s ease-in-out;
-    }
-    .document-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+
+    .title-truncate {
+        /* This can be used in both the table and grid card */
+        display: inline-block;
+        max-width: 100%; /* Ensures it doesn't overflow its parent container */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: middle;
     }
     
-    /* --- NEW CSS FOR TAGS --- */
-    .tags-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px; /* Spacing between tags */
-        justify-content: center; /* Center tags in grid view */
-        margin-bottom: 5px;
+    .category-list-table td, .category-list-table th {
+        vertical-align: middle; /* Aligns all table cell content vertically */
     }
-    .tag-badge {
-        background-color: #e7f3ff; /* Light blue background */
-        color: #0d6efd; /* Primary blue text */
-        padding: 4px 10px;
-        border-radius: 15px; /* Pill shape */
-        font-size: 0.75rem;
-        font-weight: 600;
-        border: 1px solid #bde0fe; /* Slightly darker border */
-        white-space: nowrap; /* Prevent tags from breaking into two lines */
-    }
+    /* --- END: NEW CSS FOR TRUNCATION --- */
+
 </style>
 {% endblock %}
