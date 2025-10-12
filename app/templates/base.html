@@ -83,6 +83,8 @@
       href="{{ url_for('static', filename='css/base.css') }}"
     />
 
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
     <style>
       /*
         Fix for footer overlapping main content.
@@ -650,6 +652,14 @@
         });
       });
     </script>
+    <script src="{{ url_for('static', filename='assets/js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js') }}"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script src="{{ url_for('static', filename='assets/js/main.js') }}"></script>
+
+    {% block scripts %}{% endblock %}
   </body>
 </html>
 "
