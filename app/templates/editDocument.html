@@ -62,14 +62,15 @@
 
             <div class="mb-3">
                 <label for="tags" class="form-label">Tags</label>
-                <select id="tags" name="tags" class="form-control">
-                    <option value="">-- Select a Tag --</option>
-                    {% for tag in tags %}
-                    <option value="{{ tag.tag_name }}" {% if tag.tag_name == doc.tags %}selected{% endif %}>
-                        {{ tag.tag_name }}
-                    </option>
-                    {% endfor %}
-                </select>
+    <select id="tags" name="tags" class="form-control" multiple>
+        {% for tag in tags %}
+        <option value="{{ tag.t_id }}" 
+                {% if tag.t_id in doc.current_tag_ids %}selected{% endif %}>
+            {{ tag.tag_name }}
+        </option>
+        {% endfor %}
+    </select>
+    <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple tags</small>
             </div>
             
             <div class="mb-3">
