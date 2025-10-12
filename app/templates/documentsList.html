@@ -44,7 +44,7 @@
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <select name="category" id="category-filter" class="form-control">
-                        <option value="">-- Select Category --</option>
+                        <option value="">-- All Categories --</option>
                         {% for cat in distinct_categories %}
                         <option value="{{ cat }}">{{ cat }}</option>
                         {% endfor %}
@@ -52,7 +52,7 @@
                 </div>
                 <div class="col-md-4 mb-3">
                     <select name="sub_category" id="subcategory-filter" class="form-control">
-                        <option value="">-- Select Sub Category --</option>
+                        <option value="">-- All Sub Categories --</option>
                         {% for sub_cat in distinct_sub_categories %}
                         <option value="{{ sub_cat }}">{{ sub_cat }}</option>
                         {% endfor %}
@@ -60,7 +60,7 @@
                 </div>
                 <div class="col-md-4 mb-3">
                     <select name="tags" id="tags-filter" class="form-control">
-                        <option value="">-- Choose Tags --</option>
+                        <option value="">-- All Tags --</option>
                         {% for tag in distinct_tags %}
                         <option value="{{ tag }}">{{ tag }}</option>
                         {% endfor %}
@@ -69,32 +69,42 @@
             </div>
             <div class="input-group">
                 <input type="search" name="search" id="search-input" class="form-control"
-                       placeholder="Search by keyword in Title, Filename, or Extracted Data...">
-                <button type="submit" class="btn btn-grd-primary">Apply Filters</button>
+                       placeholder="Search by keyword...">
+                <button type="submit" class="btn btn-grd-primary"><i class="material-icons-outlined" style="vertical-align: middle; margin-right: 4px;">search</i>Filter</button>
             </div>
         </form>
     </div>
 
-    <div id="listView" class="category-list-table-card mt-3">
-        <table class="category-list-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Title</th>
-                    <th>Category</th>
-                    <th>Sub Category</th>
-                    <th>Tags</th>
-                    <th>File-Name</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="document-table-body">
-                </tbody>
-        </table>
-    </div>
-
-    <div id="gridView" class="row d-none mt-3">
+    <div id="data-container" class="mt-4">
+        <div id="listView">
+            <div class="category-list-table-card">
+                <table class="category-list-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Title</th>
+                            <th>Category</th>
+                            <th>Tags</th>
+                            <th>File-Name</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="document-table-body">
+                        </tbody>
+                </table>
+            </div>
         </div>
+        <div id="gridView" class="row d-none">
+            </div>
+
+        <div id="no-documents-placeholder" class="text-center p-5 d-none">
+            <div class="no-docs-icon">
+                <i class="material-icons-outlined">find_in_page</i>
+            </div>
+            <h3>No Documents Found</h3>
+            <p class="text-muted">Try adjusting your search filters or upload a new document.</p>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="documentViewerModal" tabindex="-1" aria-labelledby="documentViewerModalLabel" aria-hidden="true">
@@ -104,22 +114,18 @@
                 <h5 class="modal-title" id="documentViewerModalLabel">Document Viewer</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="documentViewerBody" style="height: 80vh;">
-                </div>
+            <div class="modal-body" id="documentViewerBody" style="height: 80vh;"></div>
         </div>
     </div>
 </div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // --- Element Selectors (Unchanged) ---
         const tableBody = document.getElementById('document-table-body');
-        const gridView = document.getElementById('gridView');
-        // ... (rest of selectors are unchanged) ...
-        const viewerModal = new bootstrap.Modal(document.getElementById('documentViewerModal'));
-        const modalTitle = document.getElementById('documentViewerModalLabel');
-        const modalBody = document.getElementById('documentViewerBody');
-        const modalElement = document.getElementById('documentViewerModal');
+        const gridViewContainer = document.getElementById('gridView');
+        const listViewContainer = document.getElementById('listView');
+        const noDocsPlaceholder = document.getElementById('no-documents-placeholder');
+
         const filterForm = document.getElementById('filter-form');
         const searchInput = document.getElementById('search-input');
         const categoryFilter = document.getElementById('category-filter');
@@ -127,16 +133,27 @@
         const tagsFilter = document.getElementById('tags-filter');
         const listTab = document.getElementById('listTab');
         const gridTab = document.getElementById('gridTab');
-        const listView = document.getElementById('listView');
-        
-        listTab.addEventListener('click', () => { listView.classList.remove('d-none'); gridView.classList.add('d-none'); listTab.classList.add('active'); gridTab.classList.remove('active'); });
-        gridTab.addEventListener('click', () => { gridView.classList.remove('d-none'); listView.classList.add('d-none'); gridTab.classList.add('active'); listTab.classList.remove('active'); });
+
+        listTab.addEventListener('click', () => {
+            listViewContainer.classList.remove('d-none');
+            gridViewContainer.classList.add('d-none');
+            listTab.classList.add('active');
+            gridTab.classList.remove('active');
+        });
+        gridTab.addEventListener('click', () => {
+            gridViewContainer.classList.remove('d-none');
+            listViewContainer.classList.add('d-none');
+            gridTab.classList.add('active');
+            listTab.classList.remove('active');
+        });
 
         async function fetchAndRenderDocuments() {
-            // ... (fetch logic is unchanged) ...
             const params = new URLSearchParams({ search: searchInput.value, category: categoryFilter.value, sub_category: subcategoryFilter.value, tags: tagsFilter.value });
-            tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Loading documents...</td></tr>';
-            gridView.innerHTML = '<div class="col-12 text-center py-4">Loading documents...</div>';
+            
+            // Show a temporary loading state
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td></tr>';
+            gridViewContainer.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            noDocsPlaceholder.classList.add('d-none');
 
             try {
                 const response = await fetch(`{{ url_for('main.api_search_documents') }}?${params.toString()}`);
@@ -144,126 +161,132 @@
                 const documents = await response.json();
 
                 tableBody.innerHTML = '';
-                gridView.innerHTML = '';
+                gridViewContainer.innerHTML = '';
 
                 if (documents.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">No documents found.</td></tr>';
-                    gridView.innerHTML = '<div class="col-12 text-center py-4">No documents found.</div>';
+                    noDocsPlaceholder.classList.remove('d-none');
+                    listViewContainer.classList.add('d-none');
+                    gridViewContainer.classList.add('d-none');
                 } else {
+                    noDocsPlaceholder.classList.add('d-none');
+                    // Show the currently active view
+                    if (listTab.classList.contains('active')) {
+                        listViewContainer.classList.remove('d-none');
+                    } else {
+                        gridViewContainer.classList.remove('d-none');
+                    }
+
                     documents.forEach(doc => {
                         const createTagsHtml = (tagsString) => {
-                            if (!tagsString) return 'N/A';
+                            if (!tagsString) return '<span class="text-muted">N/A</span>';
                             return `<div class="tags-container">` +
                                 tagsString.split(',').map(tag => `<span class="tag-badge">${tag.trim()}</span>`).join('') +
                                 `</div>`;
                         };
                         const tagsHtml = createTagsHtml(doc.tags);
 
-                        // --- START: MODIFIED SECTION ---
                         const listRowHtml = `
                             <tr>
                                 <td class="text-nowrap">${doc.created_at || 'N/A'}</td>
                                 <td class="title-truncate" title="${doc.title || ''}">${doc.title || ''}</td>
-                                <td>${doc.category || ''}</td>
-                                <td>${doc.sub_category || ''}</td>
+                                <td>${doc.category || ''}<br><small class="text-muted">${doc.sub_category || ''}</small></td>
                                 <td>${tagsHtml}</td>
                                 <td>
                                     <div class="mb-1 filename-truncate" title="${doc.original_filename || ''}">${doc.original_filename || 'N/A'}</div>
-                                    <button type="button" class="btn-action btn-view btn-sm view-doc-btn" 
-                                            data-file-url="${doc.file_path}" data-file-title="${doc.title || 'Document'}">
+                                    <button type="button" class="btn-action btn-view btn-sm view-doc-btn" data-file-url="${doc.file_path}" data-file-title="${doc.title || 'Document'}">
                                         <i class="material-icons-outlined">visibility</i> View
                                     </button>
                                 </td>
-                                <td class="text-nowrap">
-                                    <a href="/documents/edit/${doc.id}" class="btn-action btn-edit"><i class="material-icons-outlined">edit</i>Edit</a>
-                                    <form action="/documents/delete/${doc.id}" method="POST" class="d-inline-block" onsubmit="return confirm('Are you sure you want to delete this document?');">
-                                        <button type="submit" class="btn-action btn-delete"><i class="material-icons-outlined">delete</i>Delete</button>
-                                    </form>
+                                <td class="text-nowrap text-end">
+                                    <div class="action-buttons">
+                                        <a href="/documents/edit/${doc.id}" class="btn-action btn-edit" title="Edit"><i class="material-icons-outlined">edit</i></a>
+                                        <form action="/documents/delete/${doc.id}" method="POST" class="d-inline-block" onsubmit="return confirm('Are you sure you want to delete this document?');">
+                                            <button type="submit" class="btn-action btn-delete" title="Delete"><i class="material-icons-outlined">delete</i></button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>`;
-                        // --- END: MODIFIED SECTION ---
                         tableBody.insertAdjacentHTML('beforeend', listRowHtml);
 
                         const gridCardHtml = `
                             <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
-                                <div class="card h-100 shadow-sm border-0 document-card">
-                                    <div class="card-body d-flex flex-column text-center">
-                                        <img src="{{ url_for('static', filename='me/PDF_file_icon.svg.png') }}" alt="PDF" class="img-fluid mb-3 mx-auto" style="width:70px;">
-                                        <h5 class="card-title title-truncate" title="${doc.title || ''}">${doc.title || ''}</h5>
+                                <div class="card h-100 shadow-sm border-0 document-card d-flex flex-column">
+                                    <div class="card-body flex-grow-1">
+                                        <img src="{{ url_for('static', filename='me/PDF_file_icon.svg.png') }}" alt="PDF" class="img-fluid mb-3 mx-auto d-block" style="width:60px;">
+                                        <h6 class="card-title title-truncate" title="${doc.title || ''}">${doc.title || ''}</h6>
                                         <p class="text-muted small mb-2">${doc.created_at || 'N/A'}</p>
-                                        <div class="mt-auto">
-                                            <p class="mb-2 text-start">
-                                                <small><strong>Category:</strong> ${doc.category || ''}</small><br>
-                                                <small><strong>Sub Category:</strong> ${doc.sub_category || ''}</small>
-                                            </p>
-                                            <div class="mb-3">${tagsHtml}</div>
-                                            <button type="button" class="btn btn-sm btn-grd-primary mb-2 view-doc-btn" 
-                                                    data-file-url="${doc.file_path}" data-file-title="${doc.title || 'Document'}">
-                                                View Document
+                                        <div class="mb-3">${tagsHtml}</div>
+                                    </div>
+                                    <div class="card-footer bg-light border-0 pt-3">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <button type="button" class="btn btn-sm btn-outline-primary view-doc-btn" data-file-url="${doc.file_path}" data-file-title="${doc.title || 'Document'}">
+                                                View
                                             </button>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">Actions</button>
-                                                <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="/documents/edit/${doc.id}">Edit</a></li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <form action="/documents/delete/${doc.id}" method="POST" onsubmit="return confirm('Are you sure you want to delete this document?');">
-                                                            <button type="submit" class="dropdown-item text-danger">Delete</button>
-                                                        </form>
-                                                    </li>
-                                                </ul>
+                                            <div class="action-buttons">
+                                                <a href="/documents/edit/${doc.id}" class="btn-action btn-edit" title="Edit"><i class="material-icons-outlined">edit</i></a>
+                                                <form action="/documents/delete/${doc.id}" method="POST" class="d-inline-block" onsubmit="return confirm('Are you sure you want to delete this document?');">
+                                                    <button type="submit" class="btn-action btn-delete" title="Delete"><i class="material-icons-outlined">delete</i></button>
+                                                </form>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>`;
-                        gridView.insertAdjacentHTML('beforeend', gridCardHtml);
+                        gridViewContainer.insertAdjacentHTML('beforeend', gridCardHtml);
                     });
                 }
             } catch (error) {
                 console.error("Failed to fetch documents:", error);
-                tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error loading documents. Please try again.</td></tr>';
-                gridView.innerHTML = '<div class="col-12 text-center py-4 text-danger">Error loading documents. Please try again.</div>';
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-danger">Error loading documents. Please try again.</td></tr>';
+                gridViewContainer.innerHTML = '<div class="col-12 text-center py-5 text-danger">Error loading documents. Please try again.</div>';
             }
         }
         
-        // Document Viewer Modal and Event Listeners remain unchanged
-        document.body.addEventListener('click', function(event) {
-            // ... (modal logic is unchanged) ...
-        });
-        modalElement.addEventListener('hidden.bs.modal', function () {
-            modalBody.innerHTML = '';
-        });
-        filterForm.addEventListener('submit', (event) => { event.preventDefault(); fetchAndRenderDocuments(); });
+        // Modal and Event Listeners remain unchanged
+        // ...
+        filterForm.addEventListener('submit', (e) => { e.preventDefault(); fetchAndRenderDocuments(); });
         [categoryFilter, subcategoryFilter, tagsFilter].forEach(filter => { filter.addEventListener('change', fetchAndRenderDocuments); });
         fetchAndRenderDocuments();
     });
 </script>
 
 <style>
-    /* Existing styles remain unchanged */
-    .custom-tabs .nav-link { color: #555; font-weight: 500; border: none; border-bottom: 2px solid transparent; margin: 0 10px; }
-    .custom-tabs .nav-link.active { color: #0d6efd; border-bottom: 2px solid #0d6efd; }
-    .document-card { border-radius: 10px; transition: transform .2s ease-in-out, box-shadow .2s ease-in-out; }
-    .document-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
-    .tags-container { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-start; /* Aligns tags to the left in table view */ }
+    /* Professional Styling Overhaul */
+
+    /* Tabs */
+    .custom-tabs .nav-link { font-weight: 500; border-bottom: 3px solid transparent; transition: all .2s ease; }
+    .custom-tabs .nav-link.active { color: var(--bs-primary); border-bottom-color: var(--bs-primary); }
+
+    /* List View Table */
+    .category-list-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+    .category-list-table th { color: #6c757d; font-weight: 600; text-transform: uppercase; font-size: .8rem; padding: 1rem; }
+    .category-list-table td { background: #fff; padding: 1rem; vertical-align: middle !important; }
+    .category-list-table tr:hover td { background-color: #f8f9fa; }
+    .category-list-table td:first-child { border-top-left-radius: .5rem; border-bottom-left-radius: .5rem; }
+    .category-list-table td:last-child { border-top-right-radius: .5rem; border-bottom-right-radius: .5rem; }
+
+    /* Grid View Card */
+    .document-card { border-radius: .75rem; transition: transform .2s ease-in-out, box-shadow .2s ease-in-out; }
+    .document-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.1)!important; }
+    .document-card .card-footer { border-bottom-left-radius: .75rem; border-bottom-right-radius: .75rem; }
+    
+    /* Shared Elements */
+    .tags-container { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-start; }
+    .document-card .tags-container { justify-content: center; } /* Center tags in grid view */
     .tag-badge { background-color: #e7f3ff; color: #0d6efd; padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; border: 1px solid #bde0fe; white-space: nowrap; }
 
-    .filename-truncate { max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .title-truncate { display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .filename-truncate { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .title-truncate { display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; font-weight: 600; }
     
-    /* --- START: MODIFIED/NEW CSS --- */
-    .category-list-table td, 
-    .category-list-table th {
-        vertical-align: middle !important; /* This is the main fix! */
-    }
+    .action-buttons { display: flex; gap: .5rem; justify-content: flex-end; }
+    .btn-action { background: none; border: none; padding: .3rem; color: #6c757d; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; transition: all .2s ease; }
+    .btn-action i { font-size: 1.1rem; }
+    .btn-action.btn-edit:hover { background-color: #e7f3ff; color: #0d6efd; }
+    .btn-action.btn-delete:hover { background-color: #fff0f3; color: #dc3545; }
+    .btn-action.btn-view:hover { background-color: #f0f0f0; color: #444; }
 
-    .tags-container {
-        /* In grid view, we still want tags centered */
-        .document-card & {
-            justify-content: center;
-        }
-    }
-    /* --- END: MODIFIED/NEW CSS --- */
+    /* No Documents Placeholder */
+    #no-documents-placeholder { border: 2px dashed #dee2e6; border-radius: 1rem; background-color: #f8f9fa; }
+    .no-docs-icon i { font-size: 4rem; color: #ced4da; }
 </style>
 {% endblock %}
