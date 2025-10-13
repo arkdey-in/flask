@@ -857,21 +857,28 @@ def supAdmRegistration():
                 )
                 connection.commit()
             
+            # Get the ID of the user that was just created
+            new_superadmin_id = cursor.lastrowid 
+                
+            connection.commit()
+            
             log_super_admin_activity(
-                0,
+                new_superadmin_id,
                 "Super Admin Registration",
-                "Landing Page/Registration",
-                f"First Super Admin Registered ",
+                "Authentication",
+                f"First Super Admin '{form.name.data}' registered successfully.",
             )
                 
             flash("Registration successful! Please log in.", "success")
             return redirect(url_for("main.admLogin"))
             
         except Exception as e:
-            connection.rollback()
+            if connection:
+               connection.rollback()
             flash(f"Error during registration: {str(e)}", "danger")
         finally:
-            connection.close()
+            if connection:
+               connection.close()
     
     return render_template("supAdmRegistration.html", form=form)
 
