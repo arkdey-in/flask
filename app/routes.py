@@ -859,7 +859,6 @@ def supAdmRegistration():
             
             log_super_admin_activity(
                 0,
-                "First Super Admin",
                 "Super Admin Registration",
                 "Landing Page/Registration",
                 f"First Super Admin Registered ",
