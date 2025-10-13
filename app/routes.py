@@ -68,16 +68,6 @@ main = Blueprint("main", __name__)
 # Helper Functions
 # ---------------------------------------------------------------------
 
-# S3 client and functions
-# def get_s3_client():
-#     """Initializes and returns the Boto3 S3 client using app config."""
-#     return boto3.client(
-#         "s3",
-#         aws_access_key_id=current_app.config.get("AWS_ACCESS_KEY"),
-#         aws_secret_access_key=current_app.config.get("AWS_SECRET_KEY"),
-#         region_name=current_app.config.get("AWS_REGION"),
-#     )
-
 
 def get_s3_client():
     """
@@ -501,19 +491,19 @@ def analyze_document_with_openai(ocr_text, doc_types_path="document_types.json")
 
 # Task ---- 
 # 1.⁠ ⁠total documents uploaded + 
-# 2.⁠ ⁠Total characters/tokens extracted
-# 3.⁠ ⁠Total space used
+# 2.⁠ ⁠Total characters/tokens extracted + 
+# 3.⁠ ⁠Total space used + 
 # 4.⁠ ⁠Total users + 
-# 5.⁠ ⁠Total Token extracted from azure
-# 6.⁠ ⁠Total Token extracted from tesseract
+# 5.⁠ ⁠Total Token extracted from azure + 
+# 6.⁠ ⁠Total Token extracted from tesseract + 
 # 7.⁠ ⁠Total pages scanned + 
 # 8.⁠ ⁠Total pages scanned by azure +
 # 9.⁠ ⁠Total pages scanned by tesseract +
-# total admin +
-# total subadmin  +
-# total categories  + 
-# total subCategories  +
-# total tags +
+# 10. total admin +
+# 11. total subadmin  +
+# 12. total categories  + 
+# 13. total subCategories  +
+# 14. total tags +
 
 def format_bytes(size):
     """Converts bytes to a human-readable format (KB, MB, GB)."""
@@ -615,6 +605,26 @@ def get_dashboard_stats():
 # ---------------------------------------------------------------------
 # Decorators
 # ---------------------------------------------------------------------
+
+def log_super_admin_activity(superadmin_id, event_type, model, value):
+    connection = get_db_connection()
+    try:
+        superadmin_ip = get_client_ip()
+        with connection.cursor() as cursor:
+            sql = """
+            INSERT INTO super_admin_activities
+            (superadmin_id, superadmin_ip, event_type, model, value)
+            VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql, (superadmin_id, superadmin_ip, event_type, model, value))
+        connection.commit()
+    except Exception as e:
+        current_app.logger.error(f"Failed to log super admin activity: {e}")
+        connection.rollback()
+    finally:
+        if connection:
+            connection.close()
+
 def sup_adm_login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -830,7 +840,7 @@ class admRegisterForm(FlaskForm):
 def supAdmRegistration():
     if does_superadmin_exist():
         flash("Registration is disabled. Only one superadmin account is allowed.", "warning")
-        return redirect(url_for("main.admLogin")) # Redirect to the main login
+        return redirect(url_for("main.admLogin"))
     
     form = supAdmRegistrationForm()
     if form.validate_on_submit():
@@ -846,6 +856,14 @@ def supAdmRegistration():
                     (form.name.data, form.email.data, hashed_password)
                 )
                 connection.commit()
+            
+            log_super_admin_activity(
+                0,
+                "First Super Admin",
+                "Super Admin Registration",
+                "Landing Page/Registration",
+                f"First Super Admin Registered ",
+            )
                 
             flash("Registration successful! Please log in.", "success")
             return redirect(url_for("main.admLogin"))
