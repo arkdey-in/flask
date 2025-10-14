@@ -1424,16 +1424,17 @@ def supAdmActivities():
         if connection:
             connection.close()
 
-    try:
-        user_name = session.get("sup_adm_name", "Unknown Super Admin")
-        log_super_admin_activity(
-            session["sup_adm_id"],
-            "View",
-            "Super Admin Acitivities",
-            f"Super Admin '{user_name}' saw activites list",
-        )
-    except Exception as e:
-        current_app.logger.error(f"Error : {e}")
+    if not request.args:
+        try:
+            user_name = session.get("sup_adm_name", "Unknown Super Admin")
+            log_super_admin_activity(
+                session["sup_adm_id"],
+                "View",
+                "Super Admin Activities", 
+                f"Super Admin '{user_name}' viewed the activities list." 
+            )
+        except Exception as e:
+            current_app.logger.error(f"Error logging activity view: {e}")
 
     total_pages = (total + per_page - 1) // per_page if total > 0 else 0
     page_items, last_page = [], 0
