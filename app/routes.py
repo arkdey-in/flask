@@ -1054,10 +1054,10 @@ def supAdmCreateAdmin():
     connection = get_db_connection()
     adminlist = []
     try:
-        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor: 
            
             query = """
-                SELECT a.admin_id, a.admin_name, a.admin_email, a.created_at, s.superadmin_name
+                SELECT a.admin_id, a.admin_name, a.admin_email, a.created_at, s.superadmin_name, s.superadmin_id
                 FROM admin AS a
                 INNER JOIN superadmin AS s ON a.superadmin_id = s.superadmin_id
                 ORDER BY a.admin_id ASC
