@@ -911,8 +911,8 @@ def supAdmRegistration():
 
             log_super_admin_activity(
                 new_superadmin_id,
-                "Registration",
                 "Authentication",
+                "Registration",
                 f"First Super Admin '{form.name.data}' registered successfully.",
             )
 
