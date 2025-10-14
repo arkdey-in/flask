@@ -911,7 +911,7 @@ def supAdmRegistration():
 
             log_super_admin_activity(
                 new_superadmin_id,
-                "Super Admin Registration",
+                "Registration",
                 "Authentication",
                 f"First Super Admin '{form.name.data}' registered successfully.",
             )
@@ -1498,15 +1498,13 @@ def admLogin():
                         session["sup_adm_name"] = superadmin["superadmin_name"]
                         session["sup_adm_mail"] = superadmin["superadmin_email"]
 
-                        log_user_activity(
-                            superadmin["superadmin_id"],
-                            superadmin["superadmin_name"],
-                            "Super Admin",
-                            "Login",
-                            "Landing Page/Login",
-                            f"Super Admin logged in, Id: {superadmin['superadmin_id']}",
+                        user_name = session.get("sup_adm_name", "Unknown Super Admin")
+                        log_super_admin_activity(
+                            session["sup_adm_id"],
+                            "Authentication",
+                            "Admin Management",
+                            f"Super admin '{user_name}' Login.",
                         )
-
                     return redirect(url_for("main.supAdmDashboard"))
 
                 # checking if it's an admin
