@@ -1424,7 +1424,17 @@ def supAdmActivities():
         if connection:
             connection.close()
 
-    # --- Pagination and Rendering (no changes needed here) ---
+    try:
+        user_name = session.get("sup_adm_name", "Unknown Super Admin")
+        log_super_admin_activity(
+            session["sup_adm_id"],
+            "View",
+            "Super Admin Acitivities",
+            f"Super Admin '{user_name}' saw activites list",
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error : {e}")
+
     total_pages = (total + per_page - 1) // per_page if total > 0 else 0
     page_items, last_page = [], 0
     for page_num in range(1, total_pages + 1):
