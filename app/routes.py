@@ -649,6 +649,7 @@ def log_super_admin_activity(superadmin_id, event_type, model, value):
         if connection:
             connection.close()
 
+
 def log_admin_subadmin_activity(admin_subadmin_mail, event_type, model, value):
     connection = get_db_connection()
     try:
@@ -1451,8 +1452,8 @@ def supAdmActivities():
             log_super_admin_activity(
                 session["sup_adm_id"],
                 "View",
-                "Super Admin Activities", 
-                f"Super Admin '{user_name}' viewed the activities list." 
+                "Super Admin Activities",
+                f"Super Admin '{user_name}' viewed the activities list.",
             )
         except Exception as e:
             current_app.logger.error(f"Error logging activity view: {e}")
@@ -1578,7 +1579,9 @@ def admLogin():
                         session["subadmin_id"] = subadmin_user["subadmin_id"]
                         session["subadmin_name"] = subadmin_user["subadmin_name"]
                         session["subadmin_email"] = subadmin_user["subadmin_email"]
-                        session["subadmin_username"] = subadmin_user["subadmin_username"]
+                        session["subadmin_username"] = subadmin_user[
+                            "subadmin_username"
+                        ]
                         session["role_id"] = subadmin_user["role_id"]
                         session["user_type"] = "subadmin"
 
@@ -1712,7 +1715,7 @@ def categories():
             user_email = session.get("admin_mail") or session.get("subadmin_email")
             user_name = session.get("admin_name") or session.get("subadmin_name")
             log_admin_subadmin_activity(
-            user_email,
+                user_email,
                 "View",
                 "Categories Page",
                 f"{user_name} accessed the Categories Page.",
@@ -1745,11 +1748,11 @@ def add_category():
         user_email = session.get("admin_mail") or session.get("subadmin_email")
         user_name = session.get("admin_name") or session.get("subadmin_name")
         log_admin_subadmin_activity(
-                user_email,
-                "Create",
-                "Categories Page",
-                f"{user_name} created New Category Called '{category_name}'",
-            )
+            user_email,
+            "Create",
+            "Categories Page",
+            f"{user_name} created New Category Called '{category_name}'",
+        )
         # log_user_activity(
         #     session.get("admin_id") or session.get("subadmin_id"),
         #     session.get("admin_name") or session.get("subadmin_name"),
@@ -1874,7 +1877,6 @@ def delete_category(cate_id):
     return redirect(url_for("main.categories"))
 
 
-
 # # ---------------------------------------------------------------------
 # # Master: Sub-Categories
 # # ---------------------------------------------------------------------
@@ -1909,6 +1911,15 @@ def subCategories():
             """
             cursor.execute(sub_sql_com)
             all_subcategories = cursor.fetchall()
+
+            user_email = session.get("admin_mail") or session.get("subadmin_email")
+            user_name = session.get("admin_name") or session.get("subadmin_name")
+            log_admin_subadmin_activity(
+                user_email,
+                "View",
+                "Sub Categories Page",
+                f"{user_name} accessed the Sub Categories Page.",
+            )
     except Exception as e:
         current_app.logger.error(f"Error fetching sub-categories: {e}")
         flash("An error occurred while fetching sub-categories.", "danger")
@@ -1949,14 +1960,23 @@ def add_sub_category():
             )
         connection.commit()
 
-        log_user_activity(
-            session.get("admin_id") or session.get("subadmin_id"),
-            session.get("admin_name") or session.get("subadmin_name"),
-            session.get("user_type"),
-            "Create",
-            "App/Master Entries/Sub Categories",
-            f"Created New Sub Category Called '{sub_category_name}' with Category name '{category_name}' Category ID '{category_id}'",
+        user_email = session.get("admin_mail") or session.get("subadmin_email")
+        user_name = session.get("admin_name") or session.get("subadmin_name")
+        log_admin_subadmin_activity(
+            user_email,
+            "View",
+            "Categories Page",
+            f"{user_name} Created New Sub Category Called '{sub_category_name}' with Category name '{category_name}' Category ID '{category_id}'",
         )
+
+        # log_user_activity(
+        #     session.get("admin_id") or session.get("subadmin_id"),
+        #     session.get("admin_name") or session.get("subadmin_name"),
+        #     session.get("user_type"),
+        #     "Create",
+        #     "App/Master Entries/Sub Categories",
+        #     f"Created New Sub Category Called '{sub_category_name}' with Category name '{category_name}' Category ID '{category_id}'",
+        # )
 
         flash("Sub-category added successfully!", "success")
     except ValueError:
@@ -2005,14 +2025,22 @@ def edit_sub_category(sub_cat_id):
             connection.commit()
 
             if old_sub_cat:
-                log_user_activity(
-                    session.get("admin_id") or session.get("subadmin_id"),
-                    session.get("admin_name") or session.get("subadmin_name"),
-                    session.get("user_type"),
-                    "Edit",
-                    "App/Master Entries/Sub Categories",
-                    f"Edited Sub category from '{old_sub_cat['sub_category_name']}' to '{new_name}' with Sub Category ID = '{sub_cat_id}'",
+                user_email = session.get("admin_mail") or session.get("subadmin_email")
+                user_name = session.get("admin_name") or session.get("subadmin_name")
+                log_admin_subadmin_activity(
+                    user_email,
+                    "View",
+                    "Categories Page",
+                    f"{user_name} Edited Sub category from '{old_sub_cat['sub_category_name']}' to '{new_name}' with Sub Category ID = '{sub_cat_id}'",
                 )
+                # log_user_activity(
+                #     session.get("admin_id") or session.get("subadmin_id"),
+                #     session.get("admin_name") or session.get("subadmin_name"),
+                #     session.get("user_type"),
+                #     "Edit",
+                #     "App/Master Entries/Sub Categories",
+                #     f"Edited Sub category from '{old_sub_cat['sub_category_name']}' to '{new_name}' with Sub Category ID = '{sub_cat_id}'",
+                # )
 
             flash("Sub Category updated successfully!", "success")
 
@@ -2048,14 +2076,22 @@ def delete_sub_category(sub_cat_id):
             connection.commit()
 
             if sub_category:
-                log_user_activity(
-                    session.get("admin_id") or session.get("subadmin_id"),
-                    session.get("admin_name") or session.get("subadmin_name"),
-                    session.get("user_type"),
-                    "Delete",
-                    "App/Master Entries/Sub Categories",
-                    f"Deleted Sub Category '{sub_category['sub_category_name']}' with Sub Category ID '{sub_cat_id}'",
+                user_email = session.get("admin_mail") or session.get("subadmin_email")
+                user_name = session.get("admin_name") or session.get("subadmin_name")
+                log_admin_subadmin_activity(
+                    user_email,
+                    "View",
+                    "Categories Page",
+                    f"{user_name} Deleted Sub Category '{sub_category['sub_category_name']}' with Sub Category ID '{sub_cat_id}'",
                 )
+                # log_user_activity(
+                #     session.get("admin_id") or session.get("subadmin_id"),
+                #     session.get("admin_name") or session.get("subadmin_name"),
+                #     session.get("user_type"),
+                #     "Delete",
+                #     "App/Master Entries/Sub Categories",
+                #     f"Deleted Sub Category '{sub_category['sub_category_name']}' with Sub Category ID '{sub_cat_id}'",
+                # )
 
             flash("Sub Categories have been deleted.", "success")
         except Exception as e:
@@ -2083,6 +2119,15 @@ def tags():
                 "SELECT t_id , tag_name, DATE_FORMAT(t_created_at, '%d-%m-%Y %r') as t_created_at FROM tags ORDER BY t_id ASC"
             )
             all_tags = cursor.fetchall()
+
+            user_email = session.get("admin_mail") or session.get("subadmin_email")
+            user_name = session.get("admin_name") or session.get("subadmin_name")
+            log_admin_subadmin_activity(
+                user_email,
+                "View",
+                "Categories Page",
+                f"{user_name} accessed the Tag Page.",
+            )
     except Exception as e:
         current_app.logger.error(f"Error fetching tags: {e}")
         flash("An error occurred while fetching tags.", "danger")
@@ -2106,14 +2151,23 @@ def add_tag():
             cursor.execute("INSERT INTO tags (tag_name) VALUES (%s)", (tag_name,))
         connection.commit()
 
-        log_user_activity(
-            session.get("admin_id") or session.get("subadmin_id"),
-            session.get("admin_name") or session.get("subadmin_name"),
-            session.get("user_type"),
-            "Create",
-            "App/Master Entries/Tags",
-            f"Created New Tag Called '{tag_name}'",
+        user_email = session.get("admin_mail") or session.get("subadmin_email")
+        user_name = session.get("admin_name") or session.get("subadmin_name")
+        log_admin_subadmin_activity(
+            user_email,
+            "View",
+            "Categories Page",
+            f"{user_name} Created New Tag Called '{tag_name}'",
         )
+
+        # log_user_activity(
+        #     session.get("admin_id") or session.get("subadmin_id"),
+        #     session.get("admin_name") or session.get("subadmin_name"),
+        #     session.get("user_type"),
+        #     "Create",
+        #     "App/Master Entries/Tags",
+        #     f"Created New Tag Called '{tag_name}'",
+        # )
 
         flash("Tag added successfully!", "success")
     except pymysql.err.IntegrityError:
@@ -2149,14 +2203,24 @@ def edit_tag(tag_id):
             connection.commit()
 
             if old_tag:
-                log_user_activity(
-                    session.get("admin_id") or session.get("subadmin_id"),
-                    session.get("admin_name") or session.get("subadmin_name"),
-                    session.get("user_type"),
-                    "Edit",
-                    "App/Master Entries/Tags",
-                    f"Edited Tag from '{old_tag['tag_name']}' to '{new_name}' where Tag ID = '{tag_id}'",
+
+                user_email = session.get("admin_mail") or session.get("subadmin_email")
+                user_name = session.get("admin_name") or session.get("subadmin_name")
+                log_admin_subadmin_activity(
+                   user_email,
+                   "View",
+                   "Categories Page",
+                   f"{user_name} Edited Tag from '{old_tag['tag_name']}' to '{new_name}' where Tag ID = '{tag_id}'",
                 )
+
+                # log_user_activity(
+                #     session.get("admin_id") or session.get("subadmin_id"),
+                #     session.get("admin_name") or session.get("subadmin_name"),
+                #     session.get("user_type"),
+                #     "Edit",
+                #     "App/Master Entries/Tags",
+                #     f"Edited Tag from '{old_tag['tag_name']}' to '{new_name}' where Tag ID = '{tag_id}'",
+                # )
 
             flash("Tag updated successfully!", "success")
 
@@ -2186,14 +2250,24 @@ def delete_tag(tag_id):
             connection.commit()
 
             if tag:
-                log_user_activity(
-                    session.get("admin_id") or session.get("subadmin_id"),
-                    session.get("admin_name") or session.get("subadmin_name"),
-                    session.get("user_type"),
-                    "Delete",
-                    "App/Master Entries/Tags",
-                    f"Deleted Tag '{tag['tag_name']}' with Tag ID '{tag_id}'",
+
+                user_email = session.get("admin_mail") or session.get("subadmin_email")
+                user_name = session.get("admin_name") or session.get("subadmin_name")
+                log_admin_subadmin_activity(
+                   user_email,
+                   "View",
+                   "Categories Page",
+                   f"{user_name} Deleted Tag '{tag['tag_name']}' with Tag ID '{tag_id}'",
                 )
+
+                # log_user_activity(
+                #     session.get("admin_id") or session.get("subadmin_id"),
+                #     session.get("admin_name") or session.get("subadmin_name"),
+                #     session.get("user_type"),
+                #     "Delete",
+                #     "App/Master Entries/Tags",
+                #     f"Deleted Tag '{tag['tag_name']}' with Tag ID '{tag_id}'",
+                # )
 
             flash("Tag has been deleted.", "success")
         except Exception as e:
@@ -2276,14 +2350,24 @@ def addNewDocuments():
                 token_count = len(raw_text.split())
                 session["form_data_for_submission"]["token_count"] = token_count
 
-                log_user_activity(
-                    session.get("admin_id") or session.get("subadmin_id"),
-                    session.get("admin_name") or session.get("subadmin_name"),
-                    session.get("user_type"),
-                    "File Upload",
-                    "Documents/Add New",
-                    f"Uploaded document '{original_filename}' for analysis.",
+                user_email = session.get("admin_mail") or session.get("subadmin_email")
+                user_name = session.get("admin_name") or session.get("subadmin_name")
+                log_admin_subadmin_activity(
+                   user_email,
+                   "View",
+                   "Categories Page",
+                   f"{user_name} Uploaded document '{original_filename}' for analysis",
                 )
+
+
+                # log_user_activity(
+                #     session.get("admin_id") or session.get("subadmin_id"),
+                #     session.get("admin_name") or session.get("subadmin_name"),
+                #     session.get("user_type"),
+                #     "File Upload",
+                #     "Documents/Add New",
+                #     f"Uploaded document '{original_filename}' for analysis.",
+                # )
 
                 analysis_result = analyze_document_with_openai(raw_text)
                 return jsonify(
@@ -2419,14 +2503,23 @@ def submitDocument():
 
         connection.commit()
 
-        log_user_activity(
-            session.get("admin_id") or session.get("subadmin_id"),
-            session.get("admin_name") or session.get("subadmin_name"),
-            session.get("user_type"),
-            "Create",
-            "Documents/Submit",
-            f"Saved new document '{form_data.get('title')}' with S3 URL: {file_url}",
-        )
+        user_email = session.get("admin_mail") or session.get("subadmin_email")
+        user_name = session.get("admin_name") or session.get("subadmin_name")
+        log_admin_subadmin_activity(
+                   user_email,
+                   "View",
+                   "Categories Page",
+                   f"{user_name} Saved new document '{form_data.get('title')}' with S3 URL: {file_url}",
+                )
+
+        # log_user_activity(
+        #     session.get("admin_id") or session.get("subadmin_id"),
+        #     session.get("admin_name") or session.get("subadmin_name"),
+        #     session.get("user_type"),
+        #     "Create",
+        #     "Documents/Submit",
+        #     f"Saved new document '{form_data.get('title')}' with S3 URL: {file_url}",
+        # )
 
         return jsonify({"message": "Document and extracted data saved successfully!"})
 
@@ -2621,14 +2714,24 @@ def editDocument(doc_id):
 
             connection.commit()
 
-            log_user_activity(
-                session.get("admin_id") or session.get("subadmin_id"),
-                session.get("admin_name") or session.get("subadmin_name"),
-                session.get("user_type"),
-                "Edit",
-                "Documents/Edit",
-                f"Edited document '{title}' with ID: {doc_id}",
-            )
+            user_email = session.get("admin_mail") or session.get("subadmin_email")
+            user_name = session.get("admin_name") or session.get("subadmin_name")
+            log_admin_subadmin_activity(
+                   user_email,
+                   "View",
+                   "Categories Page",
+                   f"{user_name} Edited document '{title}' with ID: {doc_id}",
+                )
+
+            # log_user_activity(
+            #     session.get("admin_id") or session.get("subadmin_id"),
+            #     session.get("admin_name") or session.get("subadmin_name"),
+            #     session.get("user_type"),
+            #     "Edit",
+            #     "Documents/Edit",
+            #     f"Edited document '{title}' with ID: {doc_id}",
+            # )
+
             flash("Document updated successfully!", "success")
             return redirect(url_for("main.documentList"))
 
@@ -2716,14 +2819,23 @@ def deleteDocument(doc_id):
             file_key = file_path.split("/")[-1]
             delete_file_from_s3(file_key, current_app.config.get("AWS_S3_BUCKET"))
 
-        log_user_activity(
-            session.get("admin_id") or session.get("subadmin_id"),
-            session.get("admin_name") or session.get("subadmin_name"),
-            session.get("user_type"),
-            "Delete",
-            "Documents/Delete",
-            f"Deleted document with ID: {doc_id}",
-        )
+        user_email = session.get("admin_mail") or session.get("subadmin_email")
+        user_name = session.get("admin_name") or session.get("subadmin_name")
+        log_admin_subadmin_activity(
+                   user_email,
+                   "View",
+                   "Categories Page",
+                   f"{user_name} Deleted document with ID: {doc_id}",
+                )
+
+        # log_user_activity(
+        #     session.get("admin_id") or session.get("subadmin_id"),
+        #     session.get("admin_name") or session.get("subadmin_name"),
+        #     session.get("user_type"),
+        #     "Delete",
+        #     "Documents/Delete",
+        #     f"Deleted document with ID: {doc_id}",
+        # )
 
         flash("Document deleted successfully!", "success")
     except Exception as e:
@@ -2836,14 +2948,23 @@ def createRole():
                 cursor.execute(sql, (role_name, permissions_json))
             connection.commit()
 
-            log_user_activity(
-                session.get("admin_id") or session.get("subadmin_id"),
-                session.get("admin_name") or session.get("subadmin_name"),
-                session.get("user_type"),
-                "Create",
-                "Users/Roles",
-                f"Created new role '{role_name}'",
-            )
+            user_email = session.get("admin_mail") or session.get("subadmin_email")
+            user_name = session.get("admin_name") or session.get("subadmin_name")
+            log_admin_subadmin_activity(
+                   user_email,
+                   "View",
+                   "Categories Page",
+                   f"{user_name} Created new role '{role_name}'",
+                )
+
+            # log_user_activity(
+            #     session.get("admin_id") or session.get("subadmin_id"),
+            #     session.get("admin_name") or session.get("subadmin_name"),
+            #     session.get("user_type"),
+            #     "Create",
+            #     "Users/Roles",
+            #     f"Created new role '{role_name}'",
+            # )
 
             flash(f'Role "{role_name}" created successfully!', "success")
             return redirect(url_for("main.usersRoles"))
@@ -2935,14 +3056,23 @@ def editRole(role_id):
 
             connection.commit()
 
-            log_user_activity(
-                session.get("admin_id") or session.get("subadmin_id"),
-                session.get("admin_name") or session.get("subadmin_name"),
-                session.get("user_type"),
-                "Edit",
-                "Users/Roles",
-                f"Edited role '{role_name}' with ID: {role_id}",
-            )
+            user_email = session.get("admin_mail") or session.get("subadmin_email")
+            user_name = session.get("admin_name") or session.get("subadmin_name")
+            log_admin_subadmin_activity(
+                   user_email,
+                   "View",
+                   "Categories Page",
+                   f"{user_name} Edited role '{role_name}' with ID: {role_id}",
+                )
+
+            # log_user_activity(
+            #     session.get("admin_id") or session.get("subadmin_id"),
+            #     session.get("admin_name") or session.get("subadmin_name"),
+            #     session.get("user_type"),
+            #     "Edit",
+            #     "Users/Roles",
+            #     f"Edited role '{role_name}' with ID: {role_id}",
+            # )
 
             flash(f'Role "{role_name}" updated successfully!', "success")
             return redirect(url_for("main.usersRoles"))
@@ -3002,14 +3132,23 @@ def deleteRole(role_id):
             cursor.execute("DELETE FROM subadminroles WHERE r_id = %s", (role_id,))
         connection.commit()
 
-        log_user_activity(
-            session.get("admin_id") or session.get("subadmin_id"),
-            session.get("admin_name") or session.get("subadmin_name"),
-            session.get("user_type"),
-            "Delete",
-            "Users/Roles",
-            f"Deleted role '{role_name}' with ID: {role_id}",
-        )
+        user_email = session.get("admin_mail") or session.get("subadmin_email")
+        user_name = session.get("admin_name") or session.get("subadmin_name")
+        log_admin_subadmin_activity(
+                   user_email,
+                   "View",
+                   "Categories Page",
+                   f"{user_name} Deleted role '{role_name}' with ID: {role_id}",
+                )
+
+        # log_user_activity(
+        #     session.get("admin_id") or session.get("subadmin_id"),
+        #     session.get("admin_name") or session.get("subadmin_name"),
+        #     session.get("user_type"),
+        #     "Delete",
+        #     "Users/Roles",
+        #     f"Deleted role '{role_name}' with ID: {role_id}",
+        # )
 
         flash(f'Role "{role_name}" has been deleted.', "success")
 
@@ -3139,14 +3278,23 @@ def createUser():
                 cursor.execute(sql, (name, email, username, hashed_password, role_id))
             connection.commit()
 
-            log_user_activity(
-                session.get("admin_id") or session.get("subadmin_id"),
-                session.get("admin_name") or session.get("subadmin_name"),
-                session.get("user_type"),
-                "Create",
-                "Users/User Management",
-                f"Created new user '{name}' with email '{email}' and role_id '{role_id}'",
-            )
+            user_email = session.get("admin_mail") or session.get("subadmin_email")
+            user_name = session.get("admin_name") or session.get("subadmin_name")
+            log_admin_subadmin_activity(
+                   user_email,
+                   "View",
+                   "Categories Page",
+                   f"{user_name} Created new user '{name}' with email '{email}' and role_id '{role_id}'",
+                )
+
+            # log_user_activity(
+            #     session.get("admin_id") or session.get("subadmin_id"),
+            #     session.get("admin_name") or session.get("subadmin_name"),
+            #     session.get("user_type"),
+            #     "Create",
+            #     "Users/User Management",
+            #     f"Created new user '{name}' with email '{email}' and role_id '{role_id}'",
+            # )
 
             flash(f'User "{name}" created successfully!', "success")
             return redirect(url_for("main.userList"))
@@ -3267,14 +3415,23 @@ def editUser(user_id):
 
             connection.commit()
 
-            log_user_activity(
-                session.get("admin_id") or session.get("subadmin_id"),
-                session.get("admin_name") or session.get("subadmin_name"),
-                session.get("user_type"),
-                "Edit",
-                "Users/User Management",
-                f"Edited user '{name}' with ID: {user_id}",
-            )
+            user_email = session.get("admin_mail") or session.get("subadmin_email")
+            user_name = session.get("admin_name") or session.get("subadmin_name")
+            log_admin_subadmin_activity(
+                   user_email,
+                   "View",
+                   "Categories Page",
+                   f"{user_name} Edited user '{name}' with ID: {user_id}",
+                )
+
+            # log_user_activity(
+            #     session.get("admin_id") or session.get("subadmin_id"),
+            #     session.get("admin_name") or session.get("subadmin_name"),
+            #     session.get("user_type"),
+            #     "Edit",
+            #     "Users/User Management",
+            #     f"Edited user '{name}' with ID: {user_id}",
+            # )
 
             flash(f'User "{name}" updated successfully!', "success")
             return redirect(url_for("main.userList"))
@@ -3328,14 +3485,25 @@ def deleteUser(user_id):
         connection.commit()
 
         if subadmin:
-            log_user_activity(
-                session.get("admin_id") or session.get("subadmin_id"),
-                session.get("admin_name") or session.get("subadmin_name"),
-                session.get("user_type"),
-                "Delete",
-                "Users/User Management",
-                f"Deleted User '{subadmin['subadmin_username']}' with ID '{user_id}'",
-            )
+
+
+            user_email = session.get("admin_mail") or session.get("subadmin_email")
+            user_name = session.get("admin_name") or session.get("subadmin_name")
+            log_admin_subadmin_activity(
+                   user_email,
+                   "View",
+                   "Categories Page",
+                   f"{user_name} Deleted User '{subadmin['subadmin_username']}' with ID '{user_id}'",
+                )
+
+            # log_user_activity(
+            #     session.get("admin_id") or session.get("subadmin_id"),
+            #     session.get("admin_name") or session.get("subadmin_name"),
+            #     session.get("user_type"),
+            #     "Delete",
+            #     "Users/User Management",
+            #     f"Deleted User '{subadmin['subadmin_username']}' with ID '{user_id}'",
+            # )
 
         flash("User has been deleted successfully.", "success")
 
@@ -3467,4 +3635,3 @@ def debug_force_reload_permissions():
     else:
         flash("Not a subadmin user", "warning")
     return redirect(url_for("main.admDashboard"))
-
