@@ -649,6 +649,27 @@ def log_super_admin_activity(superadmin_id, event_type, model, value):
         if connection:
             connection.close()
 
+def log_admin_subadmin_activity(admin_subadmin_mail, event_type, model, value):
+    connection = get_db_connection()
+    try:
+        admin_subadmin_ip = get_client_ip()
+        with connection.cursor() as cursor:
+            sql = """
+            INSERT INTO super_admin_activities
+            (admin_id, admin_ip, event_type, model, value)
+            VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(
+                sql, (admin_subadmin_mail, admin_subadmin_ip, event_type, model, value)
+            )
+        connection.commit()
+    except Exception as e:
+        current_app.logger.error(f"Failed to log super admin activity: {e}")
+        connection.rollback()
+    finally:
+        if connection:
+            connection.close()
+
 
 def sup_adm_login_required(f):
     @wraps(f)
@@ -1513,7 +1534,7 @@ def admLogin():
                         log_super_admin_activity(
                             session["sup_adm_id"],
                             "Authentication",
-                            "Admin Management",
+                            "Super Admin Management",
                             f"Super admin '{user_name}' Login.",
                         )
                     return redirect(url_for("main.supAdmDashboard"))
@@ -1533,17 +1554,16 @@ def admLogin():
                         session["admin_name"] = user["admin_name"]
                         session["admin_mail"] = user["admin_email"]
                         session["user_type"] = "admin"
-                        log_user_activity(
-                            user["admin_id"],
-                            user["admin_name"],
-                            "Admin",
-                            "Login",
-                            "Landing Page/Login",
-                            f"Admin logged in, Id: {user['admin_id']}, Name: {user['admin_name']}, Email: {user['admin_email']}",
+
+                        user_name2 = session.get("admin_name", "Unknown Admin")
+                        log_admin_subadmin_activity(
+                            session["admin_mail"],
+                            "Authentication",
+                            "Admin Management",
+                            f"Admin '{user_name2}' Login.",
                         )
                         return redirect(url_for("main.admDashboard"))
 
-                # If not an admin, checking if it's a subadmin
                 cursor.execute(
                     "SELECT * FROM subadmin WHERE subadmin_email=%s", (form.email.data,)
                 )
@@ -1558,20 +1578,27 @@ def admLogin():
                         session["subadmin_id"] = subadmin_user["subadmin_id"]
                         session["subadmin_name"] = subadmin_user["subadmin_name"]
                         session["subadmin_email"] = subadmin_user["subadmin_email"]
-                        session["subadmin_username"] = subadmin_user[
-                            "subadmin_username"
-                        ]
+                        session["subadmin_username"] = subadmin_user["subadmin_username"]
                         session["role_id"] = subadmin_user["role_id"]
                         session["user_type"] = "subadmin"
+
                         load_subadmin_permissions()
-                        log_user_activity(
-                            subadmin_user["subadmin_id"],
-                            subadmin_user["subadmin_name"],
-                            "Subadmin",
-                            "Login",
-                            "Landing Page/Login",
-                            f"Subadmin logged in, Id: {subadmin_user['subadmin_id']}, Name: {subadmin_user['subadmin_name']}",
+                        user_name3 = session.get("subadmin_name", "Unknown Admin")
+                        log_admin_subadmin_activity(
+                            session["subadmin_email"],
+                            "Authentication",
+                            "Admin Management",
+                            f"Sub Admin '{user_name3}' Login.",
                         )
+
+                        # log_user_activity(
+                        #     subadmin_user["subadmin_id"],
+                        #     subadmin_user["subadmin_name"],
+                        #     "Subadmin",
+                        #     "Login",
+                        #     "Landing Page/Login",
+                        #     f"Subadmin logged in, Id: {subadmin_user['subadmin_id']}, Name: {subadmin_user['subadmin_name']}",
+                        # )
                         return redirect(url_for("main.admDashboard"))
 
         except Exception as e:
@@ -1590,6 +1617,23 @@ def admLogin():
 @adm_login_required
 @subadmin_permission_required("DASHBOARDS.view_dashboard")
 def admDashboard():
+    try:
+        user_name = session.get("admin_name","subadmin_name", "Unknown Admin")
+        log_admin_subadmin_activity(
+            session["admin_mail"] or session.get("subadmin_email"),
+            "View",
+            "Admin Or Sub Admin Dashboard",
+            f"{user_name} accessed the main dashboard.",
+        )
+
+        # log_admin_activity(
+        #     session["admin_id"],
+        #     "View",
+        #     "Admin Dashboard",
+        #     "Accessed the main dashboard.",
+        # )
+    except Exception as e:
+        current_app.logger.error(f"Error : {e}")
 
     dashboard_stats = get_dashboard_stats()
 
@@ -1670,6 +1714,14 @@ def categories():
                 "SELECT c_id , category_name, DATE_FORMAT(c_created_at, '%d-%m-%Y %r') as c_created_at FROM categories ORDER BY c_id ASC"
             )
             all_categories = cursor.fetchall()
+
+            user_name = session.get("admin_name","subadmin_name", "Unknown Admin")
+            log_admin_subadmin_activity(
+                session["admin_mail"] or session.get("subadmin_email"),
+                "View",
+                "Categories Page",
+                f"{user_name} accessed the Categories Page.",
+            )
     except Exception as e:
         current_app.logger.error(f"Error fetching categories: {e}")
         flash("An error occurred while fetching categories.", "danger")
@@ -1695,14 +1747,21 @@ def add_category():
             )
         connection.commit()
 
-        log_user_activity(
-            session.get("admin_id") or session.get("subadmin_id"),
-            session.get("admin_name") or session.get("subadmin_name"),
-            session.get("user_type"),
-            "Create",
-            "App/Master Entries/Categories",
-            f"Created New Category Called '{category_name}'",
-        )
+        user_name = session.get("admin_name","subadmin_name", "Unknown Admin")
+        log_admin_subadmin_activity(
+                session["admin_mail"] or session.get("subadmin_email"),
+                "Create",
+                "Categories Page",
+                f"{user_name} created New Category Called '{category_name}'",
+            )
+        # log_user_activity(
+        #     session.get("admin_id") or session.get("subadmin_id"),
+        #     session.get("admin_name") or session.get("subadmin_name"),
+        #     session.get("user_type"),
+        #     "Create",
+        #     "App/Master Entries/Categories",
+        #     f"Created New Category Called '{category_name}'",
+        # )
 
         flash("Category added successfully!", "success")
     except pymysql.err.IntegrityError:
@@ -1735,14 +1794,22 @@ def edit_category(cat_id):
                 )
             connection.commit()
 
-            log_user_activity(
-                session.get("admin_id") or session.get("subadmin_id"),
-                session.get("admin_name") or session.get("subadmin_name"),
-                session.get("user_type"),
+            user_name = session.get("admin_name","subadmin_name", "Unknown Admin")
+            log_admin_subadmin_activity(
+                session["admin_mail"] or session.get("subadmin_email"),
                 "Edit",
-                "App/Master Entries/Categories",
-                f"Edited Category '{new_name}' with Category ID = '{cat_id}'",
+                "Categories Page",
+                f"{user_name} edited Category '{new_name}' with Category ID = '{cat_id}'",
             )
+
+            # log_user_activity(
+            #     session.get("admin_id") or session.get("subadmin_id"),
+            #     session.get("admin_name") or session.get("subadmin_name"),
+            #     session.get("user_type"),
+            #     "Edit",
+            #     "App/Master Entries/Categories",
+            #     f"Edited Category '{new_name}' with Category ID = '{cat_id}'",
+            # )
 
             flash("Category updated successfully!", "success")
         else:
@@ -1784,14 +1851,21 @@ def delete_category(cate_id):
             connection.commit()
 
             if category:
-                log_user_activity(
-                    session.get("admin_id") or session.get("subadmin_id"),
-                    session.get("admin_name") or session.get("subadmin_name"),
-                    session.get("user_type"),
-                    "Delete",
-                    "App/Master Entries/Categories",
-                    f"Deleted Category '{category['category_name']}' with Category ID '{cate_id}'",
+                user_name = session.get("admin_name","subadmin_name", "Unknown Admin")
+                log_admin_subadmin_activity(
+                    session["admin_mail"] or session.get("subadmin_email"),
+                    "Edit",
+                    "Categories Page",
+                    f"{user_name} deleted Category '{category['category_name']}' with Category ID '{cate_id}''",
                 )
+                # log_user_activity(
+                #     session.get("admin_id") or session.get("subadmin_id"),
+                #     session.get("admin_name") or session.get("subadmin_name"),
+                #     session.get("user_type"),
+                #     "Delete",
+                #     "App/Master Entries/Categories",
+                #     f"Deleted Category '{category['category_name']}' with Category ID '{cate_id}'",
+                # )
 
             flash("Category and all its sub-categories have been deleted.", "success")
         except Exception as e:
@@ -3394,3 +3468,4 @@ def debug_force_reload_permissions():
     else:
         flash("Not a subadmin user", "warning")
     return redirect(url_for("main.admDashboard"))
+
