@@ -655,7 +655,7 @@ def log_admin_subadmin_activity(admin_subadmin_mail, event_type, model, value):
         admin_subadmin_ip = get_client_ip()
         with connection.cursor() as cursor:
             sql = """
-            INSERT INTO super_admin_activities
+            INSERT INTO admin_subadmin_activities
             (admin_id, admin_ip, event_type, model, value)
             VALUES (%s, %s, %s, %s, %s)
             """
