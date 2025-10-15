@@ -664,7 +664,7 @@ def log_admin_subadmin_activity(admin_subadmin_mail, event_type, model, value):
             )
         connection.commit()
     except Exception as e:
-        current_app.logger.error(f"Failed to log super admin activity: {e}")
+        current_app.logger.error(f"Failed to log admin/subadmin activity: {e}")
         connection.rollback()
     finally:
         if connection:
@@ -1618,9 +1618,10 @@ def admLogin():
 @subadmin_permission_required("DASHBOARDS.view_dashboard")
 def admDashboard():
     try:
-        user_name = session.get("admin_name","subadmin_name", "Unknown Admin")
+        user_email = session.get("admin_mail") or session.get("subadmin_email")
+        user_name = session.get("admin_name") or session.get("subadmin_name")
         log_admin_subadmin_activity(
-            session.get("admin_mail") or session.get("subadmin_email"),
+            user_email,
             "View",
             "Admin Or Sub Admin Dashboard",
             f"{user_name} accessed the main dashboard.",
