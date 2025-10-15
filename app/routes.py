@@ -1641,18 +1641,27 @@ def admDashboard():
 @adm_login_required
 def admLogout():
     try:
-        user_id = session.get("admin_id") or session.get("subadmin_id")
-        user_name = session.get("admin_name") or session.get("subadmin_name")
-        user_type = session.get("user_type")
 
-        log_user_activity(
-            user_id,
-            user_name,
-            user_type,
+        user_email = session.get("admin_mail") or session.get("subadmin_email")
+        user_name = session.get("admin_name") or session.get("subadmin_name")
+        log_admin_subadmin_activity(
+            user_email,
             "Logout",
-            "Landing Page/Logout",
-            f"{user_type} logged out, Id: {user_id}, Name: {user_name}",
+            "Authentication",
+            f"{user_name} logged out .",
         )
+        # user_id = session.get("admin_id") or session.get("subadmin_id")
+        # user_name = session.get("admin_name") or session.get("subadmin_name")
+        # user_type = session.get("user_type")
+
+        # log_user_activity(
+        #     user_id,
+        #     user_name,
+        #     user_type,
+        #     "Logout",
+        #     "Landing Page/Logout",
+        #     f"{user_type} logged out, Id: {user_id}, Name: {user_name}",
+        # )
     except Exception as e:
         current_app.logger.error(f"Error logging out admin/subadmin: {e}")
 
@@ -1679,6 +1688,15 @@ def admProfile():
                 )
 
             user = cursor.fetchone()
+
+            user_email = session.get("admin_mail") or session.get("subadmin_email")
+            user_name = session.get("admin_name") or session.get("subadmin_name")
+            log_admin_subadmin_activity(
+                user_email,
+                "View",
+                "Profile",
+                f"{user_name} Accessed their own profile page..",
+            )
             if not user:
                 flash("User not found.", "danger")
                 return redirect(url_for("main.admLogin"))
@@ -1964,8 +1982,8 @@ def add_sub_category():
         user_name = session.get("admin_name") or session.get("subadmin_name")
         log_admin_subadmin_activity(
             user_email,
-            "View",
-            "Categories Page",
+            "Add",
+            "Sub Categories Page",
             f"{user_name} Created New Sub Category Called '{sub_category_name}' with Category name '{category_name}' Category ID '{category_id}'",
         )
 
@@ -2029,8 +2047,8 @@ def edit_sub_category(sub_cat_id):
                 user_name = session.get("admin_name") or session.get("subadmin_name")
                 log_admin_subadmin_activity(
                     user_email,
-                    "View",
-                    "Categories Page",
+                    "Edit",
+                    "Sub Categories Page",
                     f"{user_name} Edited Sub category from '{old_sub_cat['sub_category_name']}' to '{new_name}' with Sub Category ID = '{sub_cat_id}'",
                 )
                 # log_user_activity(
@@ -2080,8 +2098,8 @@ def delete_sub_category(sub_cat_id):
                 user_name = session.get("admin_name") or session.get("subadmin_name")
                 log_admin_subadmin_activity(
                     user_email,
-                    "View",
-                    "Categories Page",
+                    "Delete",
+                    "Sub Categories Page",
                     f"{user_name} Deleted Sub Category '{sub_category['sub_category_name']}' with Sub Category ID '{sub_cat_id}'",
                 )
                 # log_user_activity(
@@ -2125,7 +2143,7 @@ def tags():
             log_admin_subadmin_activity(
                 user_email,
                 "View",
-                "Categories Page",
+                "Tag Page",
                 f"{user_name} accessed the Tag Page.",
             )
     except Exception as e:
@@ -2155,8 +2173,8 @@ def add_tag():
         user_name = session.get("admin_name") or session.get("subadmin_name")
         log_admin_subadmin_activity(
             user_email,
-            "View",
-            "Categories Page",
+            "Add",
+            "Tag Page",
             f"{user_name} Created New Tag Called '{tag_name}'",
         )
 
@@ -2207,10 +2225,10 @@ def edit_tag(tag_id):
                 user_email = session.get("admin_mail") or session.get("subadmin_email")
                 user_name = session.get("admin_name") or session.get("subadmin_name")
                 log_admin_subadmin_activity(
-                   user_email,
-                   "View",
-                   "Categories Page",
-                   f"{user_name} Edited Tag from '{old_tag['tag_name']}' to '{new_name}' where Tag ID = '{tag_id}'",
+                    user_email,
+                    "Edit",
+                    "Tag Page",
+                    f"{user_name} Edited Tag from '{old_tag['tag_name']}' to '{new_name}' where Tag ID = '{tag_id}'",
                 )
 
                 # log_user_activity(
@@ -2254,10 +2272,10 @@ def delete_tag(tag_id):
                 user_email = session.get("admin_mail") or session.get("subadmin_email")
                 user_name = session.get("admin_name") or session.get("subadmin_name")
                 log_admin_subadmin_activity(
-                   user_email,
-                   "View",
-                   "Categories Page",
-                   f"{user_name} Deleted Tag '{tag['tag_name']}' with Tag ID '{tag_id}'",
+                    user_email,
+                    "Delete",
+                    "Tag Page",
+                    f"{user_name} Deleted Tag '{tag['tag_name']}' with Tag ID '{tag_id}'",
                 )
 
                 # log_user_activity(
@@ -2353,12 +2371,11 @@ def addNewDocuments():
                 user_email = session.get("admin_mail") or session.get("subadmin_email")
                 user_name = session.get("admin_name") or session.get("subadmin_name")
                 log_admin_subadmin_activity(
-                   user_email,
-                   "View",
-                   "Categories Page",
-                   f"{user_name} Uploaded document '{original_filename}' for analysis",
+                    user_email,
+                    "Add New",
+                    "Document Page",
+                    f"{user_name} Uploaded document '{original_filename}' for analysis",
                 )
-
 
                 # log_user_activity(
                 #     session.get("admin_id") or session.get("subadmin_id"),
@@ -2506,11 +2523,11 @@ def submitDocument():
         user_email = session.get("admin_mail") or session.get("subadmin_email")
         user_name = session.get("admin_name") or session.get("subadmin_name")
         log_admin_subadmin_activity(
-                   user_email,
-                   "View",
-                   "Categories Page",
-                   f"{user_name} Saved new document '{form_data.get('title')}' with S3 URL: {file_url}",
-                )
+            user_email,
+            "Submit",
+            "Document Page",
+            f"{user_name} Saved new document '{form_data.get('title')}' with S3 URL: {file_url}",
+        )
 
         # log_user_activity(
         #     session.get("admin_id") or session.get("subadmin_id"),
@@ -2717,11 +2734,11 @@ def editDocument(doc_id):
             user_email = session.get("admin_mail") or session.get("subadmin_email")
             user_name = session.get("admin_name") or session.get("subadmin_name")
             log_admin_subadmin_activity(
-                   user_email,
-                   "View",
-                   "Categories Page",
-                   f"{user_name} Edited document '{title}' with ID: {doc_id}",
-                )
+                user_email,
+                "Edit",
+                "Document Page",
+                f"{user_name} Edited document '{title}' with ID: {doc_id}",
+            )
 
             # log_user_activity(
             #     session.get("admin_id") or session.get("subadmin_id"),
@@ -2822,11 +2839,11 @@ def deleteDocument(doc_id):
         user_email = session.get("admin_mail") or session.get("subadmin_email")
         user_name = session.get("admin_name") or session.get("subadmin_name")
         log_admin_subadmin_activity(
-                   user_email,
-                   "View",
-                   "Categories Page",
-                   f"{user_name} Deleted document with ID: {doc_id}",
-                )
+            user_email,
+            "Delete",
+            "Document Page",
+            f"{user_name} Deleted document with ID: {doc_id}",
+        )
 
         # log_user_activity(
         #     session.get("admin_id") or session.get("subadmin_id"),
@@ -2951,11 +2968,11 @@ def createRole():
             user_email = session.get("admin_mail") or session.get("subadmin_email")
             user_name = session.get("admin_name") or session.get("subadmin_name")
             log_admin_subadmin_activity(
-                   user_email,
-                   "View",
-                   "Categories Page",
-                   f"{user_name} Created new role '{role_name}'",
-                )
+                user_email,
+                "Create",
+                "Roles Page",
+                f"{user_name} Created new role '{role_name}'",
+            )
 
             # log_user_activity(
             #     session.get("admin_id") or session.get("subadmin_id"),
@@ -3059,11 +3076,11 @@ def editRole(role_id):
             user_email = session.get("admin_mail") or session.get("subadmin_email")
             user_name = session.get("admin_name") or session.get("subadmin_name")
             log_admin_subadmin_activity(
-                   user_email,
-                   "View",
-                   "Categories Page",
-                   f"{user_name} Edited role '{role_name}' with ID: {role_id}",
-                )
+                user_email,
+                "Edit",
+                "User Page",
+                f"{user_name} Edited role '{role_name}' with ID: {role_id}",
+            )
 
             # log_user_activity(
             #     session.get("admin_id") or session.get("subadmin_id"),
@@ -3135,11 +3152,11 @@ def deleteRole(role_id):
         user_email = session.get("admin_mail") or session.get("subadmin_email")
         user_name = session.get("admin_name") or session.get("subadmin_name")
         log_admin_subadmin_activity(
-                   user_email,
-                   "View",
-                   "Categories Page",
-                   f"{user_name} Deleted role '{role_name}' with ID: {role_id}",
-                )
+            user_email,
+            "Delete",
+            "Roles Page",
+            f"{user_name} Deleted role '{role_name}' with ID: {role_id}",
+        )
 
         # log_user_activity(
         #     session.get("admin_id") or session.get("subadmin_id"),
@@ -3281,11 +3298,11 @@ def createUser():
             user_email = session.get("admin_mail") or session.get("subadmin_email")
             user_name = session.get("admin_name") or session.get("subadmin_name")
             log_admin_subadmin_activity(
-                   user_email,
-                   "View",
-                   "Categories Page",
-                   f"{user_name} Created new user '{name}' with email '{email}' and role_id '{role_id}'",
-                )
+                user_email,
+                "Create",
+                "User Page",
+                f"{user_name} Created new user '{name}' with email '{email}' and role_id '{role_id}'",
+            )
 
             # log_user_activity(
             #     session.get("admin_id") or session.get("subadmin_id"),
@@ -3418,11 +3435,11 @@ def editUser(user_id):
             user_email = session.get("admin_mail") or session.get("subadmin_email")
             user_name = session.get("admin_name") or session.get("subadmin_name")
             log_admin_subadmin_activity(
-                   user_email,
-                   "View",
-                   "Categories Page",
-                   f"{user_name} Edited user '{name}' with ID: {user_id}",
-                )
+                user_email,
+                "Edit",
+                "User Page",
+                f"{user_name} Edited user '{name}' with ID: {user_id}",
+            )
 
             # log_user_activity(
             #     session.get("admin_id") or session.get("subadmin_id"),
@@ -3486,15 +3503,14 @@ def deleteUser(user_id):
 
         if subadmin:
 
-
             user_email = session.get("admin_mail") or session.get("subadmin_email")
             user_name = session.get("admin_name") or session.get("subadmin_name")
             log_admin_subadmin_activity(
-                   user_email,
-                   "View",
-                   "Categories Page",
-                   f"{user_name} Deleted User '{subadmin['subadmin_username']}' with ID '{user_id}'",
-                )
+                user_email,
+                "Delete",
+                "User Page",
+                f"{user_name} Deleted User '{subadmin['subadmin_username']}' with ID '{user_id}'",
+            )
 
             # log_user_activity(
             #     session.get("admin_id") or session.get("subadmin_id"),
