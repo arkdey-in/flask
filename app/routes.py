@@ -1493,9 +1493,10 @@ def supAdmActivities():
     )
 
 
-@main.route("/users/activitiesforsup")
+# In routes.py
+@main.route("/superadmin/admin-activities") # <-- Better URL
 @sup_adm_login_required
-def activitiesforsup():
+def adminActivitiesForSup(): # <-- Unique function name
     page = request.args.get("page", 1, type=int)
     per_page = 20
     event_type = request.args.get("event_type")
@@ -1510,19 +1511,18 @@ def activitiesforsup():
 
     try:
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            # This query logic is excellent and does not need to change.
             base_query = """
                 FROM admin_subadmin_activities AS act
                 LEFT JOIN admin a ON act.admin_subadmin_mail = a.admin_email
                 LEFT JOIN subadmin sa ON act.admin_subadmin_mail = sa.subadmin_email
             """
-
             conditions = []
             params = []
             if event_type:
                 conditions.append("act.event_type = %s")
                 params.append(event_type)
             if user_filter:
-                # FIX: Filter by the mail column in the activity table
                 conditions.append("act.admin_subadmin_mail LIKE %s")
                 params.append(f"%{user_filter}%")
             if date_from:
@@ -1533,37 +1533,32 @@ def activitiesforsup():
                 params.append(f"{date_to} 23:59:59")
 
             where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
-
-            # Count query for pagination
             count_query = f"SELECT COUNT(act.id) as total {base_query} {where_clause}"
             cursor.execute(count_query, tuple(params))
             total = cursor.fetchone()["total"]
 
-            # Main data query with specific columns, including the user's name
             select_columns = """
                 SELECT
                     act.*,
                     COALESCE(a.admin_name, sa.subadmin_name, act.admin_subadmin_mail) as user_name
             """
             query = f"{select_columns} {base_query} {where_clause} ORDER BY act.id DESC LIMIT %s OFFSET %s"
-
             params.extend([per_page, (page - 1) * per_page])
             cursor.execute(query, tuple(params))
             activities = cursor.fetchall()
 
-            # FIX: Get distinct event types from the correct table
             cursor.execute(
                 "SELECT DISTINCT event_type FROM admin_subadmin_activities ORDER BY event_type"
             )
             event_types = [row["event_type"] for row in cursor.fetchall()]
-            # --- END: CORE FIX ---
 
     except Exception as e:
-        current_app.logger.error(f"Error fetching user activities: {e}")
+        current_app.logger.error(f"Error fetching user activities for superadmin: {e}")
         flash("An error occurred while fetching user activities.", "danger")
     finally:
         connection.close()
 
+    # Your pagination logic is correct.
     total_pages = (total + per_page - 1) // per_page
     page_items, last_page = [], 0
     for page_num in range(1, total_pages + 1):
@@ -1574,19 +1569,15 @@ def activitiesforsup():
             last_page = page_num
 
     pagination = {
-        "page": page,
-        "per_page": per_page,
-        "total": total,
-        "pages": total_pages,
-        "has_prev": page > 1,
-        "has_next": page < total_pages, # Corrected logic
-        "prev_num": page - 1,
-        "next_num": page + 1,
-        "iter_pages": lambda: page_items,
+        "page": page, "per_page": per_page, "total": total, "pages": total_pages,
+        "has_prev": page > 1, "has_next": page < total_pages,
+        "prev_num": page - 1, "next_num": page + 1, "iter_pages": lambda: page_items,
     }
 
+    # --- MAJOR FIX ---
+    # Render a NEW template that extends the super admin base template.
     return render_template(
-        "usersActivities.html",
+        "adminActivitiesForSup.html", # <-- Point to the new template
         activities=activities,
         pagination=pagination,
         event_types=event_types,

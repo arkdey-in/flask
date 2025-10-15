@@ -358,7 +358,10 @@
                   </li>
                   <!-- Change this line in your HTML -->
                   <li>
-                    <a class="dropdown-item" href="/users/activitiesforsup">
+                    <a
+                      class="dropdown-item"
+                      href="{{ url_for('main.adminActivitiesForSup') }}"
+                    >
                       <i class="material-icons-outlined">history</i>Admin
                       Activities
                     </a>
