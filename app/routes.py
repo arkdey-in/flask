@@ -1620,7 +1620,7 @@ def admDashboard():
     try:
         user_name = session.get("admin_name","subadmin_name", "Unknown Admin")
         log_admin_subadmin_activity(
-            session["admin_mail"] or session.get("subadmin_email"),
+            session.get("admin_name") or session.get("subadmin_email"),
             "View",
             "Admin Or Sub Admin Dashboard",
             f"{user_name} accessed the main dashboard.",
