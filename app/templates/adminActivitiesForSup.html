@@ -1,0 +1,108 @@
+{% extends "supAdmBase.html" %}
+
+{% block title %}Admin & Sub-Admin Activities{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-2 text-gray-800">Admin & Sub-Admin Activity Log</h1>
+    <p class="mb-4">Monitor all actions performed by Admins and Sub-Admins from the Super Admin dashboard.</p>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filter Activities</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" action="{{ url_for('main.adminActivitiesForSup') }}">
+                <div class="row">
+                    <div class="col-md-3">
+                        <input type="text" name="user" class="form-control" placeholder="Filter by User Email..." value="{{ current_filters.user or '' }}">
+                    </div>
+                    <div class="col-md-2">
+                         <select name="event_type" class="form-control">
+                            <option value="">All Event Types</option>
+                            {% for type in event_types %}
+                            <option value="{{ type }}" {% if current_filters.event_type == type %}selected{% endif %}>{{ type }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" name="date_from" class="form-control" value="{{ current_filters.date_from or '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" name="date_to" class="form-control" value="{{ current_filters.date_to or '' }}">
+                    </div>
+                    <div class="col-md-1">
+                        <button type="submit" class="btn btn-primary">Filter</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>User Name</th>
+                            <th>IP Address</th>
+                            <th>Time</th>
+                            <th>Event</th>
+                            <th>Model</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for activity in activities %}
+                        <tr>
+                            <td>{{ activity.user_name }}</td>
+                            <td>{{ activity.admin_subadmin_ip }}</td>
+                            <td>{{ activity.event_time.strftime('%d-%m-%Y %H:%M:%S') }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if activity.event_type == 'Create' %}bg-success
+                                    {% elif activity.event_type == 'Update' or activity.event_type == 'Edit' %}bg-warning
+                                    {% elif activity.event_type == 'Delete' %}bg-danger
+                                    {% elif activity.event_type == 'Authentication' %}bg-primary
+                                    {% elif activity.event_type == 'Logout' %}bg-secondary
+                                    {% else %}bg-info{% endif %}">
+                                    {{ activity.event_type }}
+                                </span>
+                            </td>
+                            <td>{{ activity.model }}</td>
+                            <td>{{ activity.value }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center">No activities found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if pagination.pages > 1 %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-end">
+                    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('main.adminActivitiesForSup', page=pagination.prev_num, **current_filters) }}">Previous</a>
+                    </li>
+                    {% for page_num in pagination.iter_pages() %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('main.adminActivitiesForSup', page=page_num, **current_filters) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('main.adminActivitiesForSup', page=pagination.next_num, **current_filters) }}">Next</a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
