@@ -897,6 +897,30 @@ class admRegisterForm(FlaskForm):
             connection.close()
 
 
+
+
+
+class SupAdmChangePasswordForm(FlaskForm):
+    old_password = PasswordField("Old Password", validators=[DataRequired()])
+    new_password = PasswordField(
+        "New Password",
+        validators=[
+            DataRequired(),
+            Length(min=8, message="Password must be at least 8 characters long."),
+            Regexp(
+                r"^(?=.*[A-Za-z])(?=.*\d).+$",
+                message="Password must contain at least one letter and one number.",
+            ),
+        ],
+    )
+    confirm_new_password = PasswordField(
+        "Confirm New Password",
+        validators=[
+            DataRequired(),
+            EqualTo("new_password", message="New passwords must match."),
+        ],
+    )
+    submit = SubmitField("Change Password")
 # ---------------------------------------------------------------------
 # Authentication Routes -> Super Admin Authentication -> Routes
 # ---------------------------------------------------------------------
@@ -1017,6 +1041,70 @@ def supAdmProfile():
         return redirect(url_for("main.supAdmlogin"))
     finally:
         connection.close()
+
+# Add this new route to routes.py, for example, after your supAdmProfile route
+
+@main.route("/superadmin/change-password", methods=["GET", "POST"])
+@sup_adm_login_required
+def supAdmChangePassword():
+    form = SupAdmChangePasswordForm()
+    if form.validate_on_submit():
+        # Get the current super admin's ID from the session
+        superadmin_id = session["sup_adm_id"]
+        
+        connection = get_db_connection()
+        try:
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+                # 1. Fetch the current hashed password from the database
+                cursor.execute(
+                    "SELECT superadmin_password FROM superadmin WHERE superadmin_id = %s",
+                    (superadmin_id,),
+                )
+                user = cursor.fetchone()
+
+                if not user:
+                    flash("An error occurred. User not found.", "danger")
+                    return redirect(url_for("main.supAdmProfile"))
+
+                current_hashed_password = user["superadmin_password"].encode("utf-8")
+                entered_old_password = form.old_password.data.encode("utf-8")
+
+                # 2. Verify if the entered old password is correct
+                if bcrypt.checkpw(entered_old_password, current_hashed_password):
+                    # 3. If correct, hash the new password
+                    new_password_hashed = bcrypt.hashpw(
+                        form.new_password.data.encode("utf-8"), bcrypt.gensalt()
+                    )
+
+                    # 4. Update the database with the new hashed password
+                    cursor.execute(
+                        "UPDATE superadmin SET superadmin_password = %s WHERE superadmin_id = %s",
+                        (new_password_hashed, superadmin_id),
+                    )
+                    connection.commit()
+
+                    # 5. Log the activity and provide feedback
+                    log_super_admin_activity(
+                        superadmin_id,
+                        "Security",
+                        "Profile Management",
+                        "Successfully changed their own password.",
+                    )
+                    flash("Your password has been updated successfully!", "success")
+                    return redirect(url_for("main.supAdmProfile"))
+                else:
+                    # If the old password is incorrect
+                    flash("Incorrect old password. Please try again.", "danger")
+
+        except Exception as e:
+            current_app.logger.error(f"Error changing password: {e}")
+            flash("An error occurred while changing your password.", "danger")
+        finally:
+            if connection:
+                connection.close()
+
+    # If it's a GET request or the form validation fails, show the form page
+    return render_template("supAdmChangePassword.html", form=form)
 
 
 # @main.route("/superadmin/supadmcreateadmin", methods=["GET", "POST"])
