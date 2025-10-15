@@ -1620,18 +1620,11 @@ def admDashboard():
     try:
         user_name = session.get("admin_name","subadmin_name", "Unknown Admin")
         log_admin_subadmin_activity(
-            session.get("admin_name") or session.get("subadmin_email"),
+            session.get("admin_mail") or session.get("subadmin_email"),
             "View",
             "Admin Or Sub Admin Dashboard",
             f"{user_name} accessed the main dashboard.",
         )
-
-        # log_admin_activity(
-        #     session["admin_id"],
-        #     "View",
-        #     "Admin Dashboard",
-        #     "Accessed the main dashboard.",
-        # )
     except Exception as e:
         current_app.logger.error(f"Error : {e}")
 
