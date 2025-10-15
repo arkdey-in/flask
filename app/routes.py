@@ -3532,6 +3532,98 @@ def deleteUser(user_id):
     return redirect(url_for("main.userList"))
 
 
+# @main.route("/users/activities")
+# @adm_login_required
+# @subadmin_permission_required("USER_ACTIVITIES.view_user_activities")
+# def usersActivities():
+#     page = request.args.get("page", 1, type=int)
+#     per_page = 20
+#     event_type = request.args.get("event_type")
+#     user_filter = request.args.get("user")
+#     date_from = request.args.get("date_from")
+#     date_to = request.args.get("date_to")
+
+#     connection = get_db_connection()
+#     activities = []
+#     total = 0
+#     event_types = []
+
+#     try:
+#         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+#             query = "SELECT * FROM user_activities"
+#             conditions = []
+#             params = []
+#             if event_type:
+#                 conditions.append("event_type = %s")
+#                 params.append(event_type)
+#             if user_filter:
+#                 conditions.append("user_name LIKE %s")
+#                 params.append(f"%{user_filter}%")
+#             if date_from:
+#                 conditions.append("event_time >= %s")
+#                 params.append(date_from)
+#             if date_to:
+#                 conditions.append("event_time <= %s")
+#                 params.append(f"{date_to} 23:59:59")
+
+#             if conditions:
+#                 query += " WHERE " + " AND ".join(conditions)
+
+#             count_query = "SELECT COUNT(*) as total FROM (" + query + ") as filtered"
+#             cursor.execute(count_query, tuple(params))
+#             total = cursor.fetchone()["total"]
+
+#             query += " ORDER BY id DESC LIMIT %s OFFSET %s"
+#             params.extend([per_page, (page - 1) * per_page])
+
+#             cursor.execute(query, tuple(params))
+#             activities = cursor.fetchall()
+
+#             cursor.execute(
+#                 "SELECT DISTINCT event_type FROM user_activities ORDER BY event_type"
+#             )
+#             event_types = [row["event_type"] for row in cursor.fetchall()]
+
+#     except Exception as e:
+#         current_app.logger.error(f"Error fetching user activities: {e}")
+#         flash("An error occurred while fetching user activities.", "danger")
+#     finally:
+#         connection.close()
+
+#     total_pages = (total + per_page - 1) // per_page
+#     page_items, last_page = [], 0
+#     for page_num in range(1, total_pages + 1):
+#         if page_num <= 2 or page_num > total_pages - 2 or abs(page_num - page) <= 2:
+#             if last_page + 1 != page_num:
+#                 page_items.append(None)
+#             page_items.append(page_num)
+#             last_page = page_num
+
+#     pagination = {
+#         "page": page,
+#         "per_page": per_page,
+#         "total": total,
+#         "pages": total_pages,
+#         "has_prev": page > 1,
+#         "has_next": page * per_page < total,
+#         "prev_num": page - 1,
+#         "next_num": page + 1,
+#         "iter_pages": lambda: page_items,
+#     }
+
+#     return render_template(
+#         "usersActivities.html",
+#         activities=activities,
+#         pagination=pagination,
+#         event_types=event_types,
+#         current_filters={
+#             "event_type": event_type,
+#             "user": user_filter,
+#             "date_from": date_from,
+#             "date_to": date_to,
+#         },
+#     )
+
 @main.route("/users/activities")
 @adm_login_required
 @subadmin_permission_required("USER_ACTIVITIES.view_user_activities")
@@ -3550,39 +3642,55 @@ def usersActivities():
 
     try:
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-            query = "SELECT * FROM user_activities"
+            # --- START: CORE FIX ---
+            # Base query now reads from the correct table and joins to get user names
+            base_query = """
+                FROM admin_subadmin_activities AS act
+                LEFT JOIN admin a ON act.admin_subadmin_mail = a.admin_email
+                LEFT JOIN subadmin sa ON act.admin_subadmin_mail = sa.subadmin_email
+            """
+
             conditions = []
             params = []
             if event_type:
-                conditions.append("event_type = %s")
+                conditions.append("act.event_type = %s")
                 params.append(event_type)
             if user_filter:
-                conditions.append("user_name LIKE %s")
+                # FIX: Filter by the mail column in the activity table
+                conditions.append("act.admin_subadmin_mail LIKE %s")
                 params.append(f"%{user_filter}%")
             if date_from:
-                conditions.append("event_time >= %s")
+                conditions.append("act.event_time >= %s")
                 params.append(date_from)
             if date_to:
-                conditions.append("event_time <= %s")
+                conditions.append("act.event_time <= %s")
                 params.append(f"{date_to} 23:59:59")
 
-            if conditions:
-                query += " WHERE " + " AND ".join(conditions)
+            where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
 
-            count_query = "SELECT COUNT(*) as total FROM (" + query + ") as filtered"
+            # Count query for pagination
+            count_query = f"SELECT COUNT(act.id) as total {base_query} {where_clause}"
             cursor.execute(count_query, tuple(params))
             total = cursor.fetchone()["total"]
 
-            query += " ORDER BY id DESC LIMIT %s OFFSET %s"
-            params.extend([per_page, (page - 1) * per_page])
+            # Main data query with specific columns, including the user's name
+            select_columns = """
+                SELECT
+                    act.*,
+                    COALESCE(a.admin_name, sa.subadmin_name, act.admin_subadmin_mail) as user_name
+            """
+            query = f"{select_columns} {base_query} {where_clause} ORDER BY act.id DESC LIMIT %s OFFSET %s"
 
+            params.extend([per_page, (page - 1) * per_page])
             cursor.execute(query, tuple(params))
             activities = cursor.fetchall()
 
+            # FIX: Get distinct event types from the correct table
             cursor.execute(
-                "SELECT DISTINCT event_type FROM user_activities ORDER BY event_type"
+                "SELECT DISTINCT event_type FROM admin_subadmin_activities ORDER BY event_type"
             )
             event_types = [row["event_type"] for row in cursor.fetchall()]
+            # --- END: CORE FIX ---
 
     except Exception as e:
         current_app.logger.error(f"Error fetching user activities: {e}")
@@ -3605,7 +3713,7 @@ def usersActivities():
         "total": total,
         "pages": total_pages,
         "has_prev": page > 1,
-        "has_next": page * per_page < total,
+        "has_next": page < total_pages, # Corrected logic
         "prev_num": page - 1,
         "next_num": page + 1,
         "iter_pages": lambda: page_items,
@@ -3623,7 +3731,6 @@ def usersActivities():
             "date_to": date_to,
         },
     )
-
 
 @main.route("/debug/permissions")
 @adm_login_required
