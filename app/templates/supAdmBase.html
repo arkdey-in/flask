@@ -283,7 +283,7 @@
               <i class="material-icons-outlined">close</i>
             </a>
           </div>
-          
+
           <div class="offcanvas-body p-0">
             <ul class="navbar-nav align-items-center flex-grow-1">
               <li class="nav-item dropdown">
@@ -318,9 +318,11 @@
                 </a>
                 <ul class="dropdown-menu">
                   <li>
-                    <a class="dropdown-item" href="/superadmin/supadmcreateadmin"
-                      ><i class="material-icons-outlined">list</i
-                        >Create Admin</a
+                    <a
+                      class="dropdown-item"
+                      href="/superadmin/supadmcreateadmin"
+                      ><i class="material-icons-outlined">list</i>Create
+                      Admin</a
                     >
                   </li>
                   <li>
@@ -351,20 +353,21 @@
                   <li>
                     <a class="dropdown-item" href="/superadmin/supadmactivities"
                       ><i class="material-icons-outlined">supervisor_account</i
-                        >Super Admin Activities</a
+                      >Super Admin Activities</a
                     >
                   </li>
-                  <li>
-                    <a class="dropdown-item" href="/users/supadmactivities"
-                      ><i class="material-icons-outlined">history</i>Admin Activities</a
-                    >
-                  </li>
+                  <!-- Change this line in your HTML -->
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('main.activitiesforsup') }}"
+                  >
+                    <i class="material-icons-outlined">history</i>Admin
+                    Activities
+                  </a>
                 </ul>
               </li>
-              
             </ul>
           </div>
-          
         </div>
       </nav>
     </div>
