@@ -3721,7 +3721,6 @@ def deleteUser(user_id):
 #     )
 
 @main.route("/users/activities")
-@sup_adm_login_required
 @adm_login_required
 @subadmin_permission_required("USER_ACTIVITIES.view_user_activities")
 def usersActivities():
