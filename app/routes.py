@@ -1709,9 +1709,10 @@ def categories():
             )
             all_categories = cursor.fetchall()
 
-            user_name = session.get("admin_name","subadmin_name", "Unknown Admin")
+            user_email = session.get("admin_mail") or session.get("subadmin_email")
+            user_name = session.get("admin_name") or session.get("subadmin_name")
             log_admin_subadmin_activity(
-                session["admin_mail"] or session.get("subadmin_email"),
+            user_email,
                 "View",
                 "Categories Page",
                 f"{user_name} accessed the Categories Page.",
@@ -1741,9 +1742,10 @@ def add_category():
             )
         connection.commit()
 
-        user_name = session.get("admin_name","subadmin_name", "Unknown Admin")
+        user_email = session.get("admin_mail") or session.get("subadmin_email")
+        user_name = session.get("admin_name") or session.get("subadmin_name")
         log_admin_subadmin_activity(
-                session["admin_mail"] or session.get("subadmin_email"),
+                user_email,
                 "Create",
                 "Categories Page",
                 f"{user_name} created New Category Called '{category_name}'",
@@ -1788,9 +1790,10 @@ def edit_category(cat_id):
                 )
             connection.commit()
 
-            user_name = session.get("admin_name","subadmin_name", "Unknown Admin")
+            user_email = session.get("admin_mail") or session.get("subadmin_email")
+            user_name = session.get("admin_name") or session.get("subadmin_name")
             log_admin_subadmin_activity(
-                session["admin_mail"] or session.get("subadmin_email"),
+                user_email,
                 "Edit",
                 "Categories Page",
                 f"{user_name} edited Category '{new_name}' with Category ID = '{cat_id}'",
@@ -1845,10 +1848,11 @@ def delete_category(cate_id):
             connection.commit()
 
             if category:
-                user_name = session.get("admin_name","subadmin_name", "Unknown Admin")
+                user_email = session.get("admin_mail") or session.get("subadmin_email")
+                user_name = session.get("admin_name") or session.get("subadmin_name")
                 log_admin_subadmin_activity(
-                    session["admin_mail"] or session.get("subadmin_email"),
-                    "Edit",
+                    user_email,
+                    "Delete",
                     "Categories Page",
                     f"{user_name} deleted Category '{category['category_name']}' with Category ID '{cate_id}''",
                 )
