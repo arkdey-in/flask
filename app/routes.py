@@ -950,7 +950,7 @@ def supAdmRegistration():
                 )
                 connection.commit()
 
-            # Get the ID of the user that was just created
+            
             new_superadmin_id = cursor.lastrowid
 
             connection.commit()
@@ -1042,20 +1042,20 @@ def supAdmProfile():
     finally:
         connection.close()
 
-# Add this new route to routes.py, for example, after your supAdmProfile route
+
 
 @main.route("/superadmin/change-password", methods=["GET", "POST"])
 @sup_adm_login_required
 def supAdmChangePassword():
     form = SupAdmChangePasswordForm()
     if form.validate_on_submit():
-        # Get the current super admin's ID from the session
+        
         superadmin_id = session["sup_adm_id"]
         
         connection = get_db_connection()
         try:
             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-                # 1. Fetch the current hashed password from the database
+                
                 cursor.execute(
                     "SELECT superadmin_password FROM superadmin WHERE superadmin_id = %s",
                     (superadmin_id,),
@@ -1069,21 +1069,21 @@ def supAdmChangePassword():
                 current_hashed_password = user["superadmin_password"].encode("utf-8")
                 entered_old_password = form.old_password.data.encode("utf-8")
 
-                # 2. Verify if the entered old password is correct
+                
                 if bcrypt.checkpw(entered_old_password, current_hashed_password):
-                    # 3. If correct, hash the new password
+                   
                     new_password_hashed = bcrypt.hashpw(
                         form.new_password.data.encode("utf-8"), bcrypt.gensalt()
                     )
 
-                    # 4. Update the database with the new hashed password
+                    
                     cursor.execute(
                         "UPDATE superadmin SET superadmin_password = %s WHERE superadmin_id = %s",
                         (new_password_hashed, superadmin_id),
                     )
                     connection.commit()
 
-                    # 5. Log the activity and provide feedback
+                    
                     log_super_admin_activity(
                         superadmin_id,
                         "Security",
@@ -1093,7 +1093,7 @@ def supAdmChangePassword():
                     flash("Your password has been updated successfully!", "success")
                     return redirect(url_for("main.supAdmProfile"))
                 else:
-                    # If the old password is incorrect
+                    
                     flash("Incorrect old password. Please try again.", "danger")
 
         except Exception as e:
@@ -1103,74 +1103,10 @@ def supAdmChangePassword():
             if connection:
                 connection.close()
 
-    # If it's a GET request or the form validation fails, show the form page
+   
     return render_template("supAdmChangePassword.html", form=form)
 
 
-# @main.route("/superadmin/supadmcreateadmin", methods=["GET", "POST"])
-# @sup_adm_login_required
-# def supAdmCreateAdmin():
-#     form = admRegisterForm()
-#     if form.validate_on_submit():
-#         hashed_password = bcrypt.hashpw(
-#             form.password.data.encode("utf-8"), bcrypt.gensalt()
-#         ).decode("utf-8")
-
-#         connection = get_db_connection()
-#         try:
-#             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-#                 cursor.execute(
-#                     "INSERT INTO admin (admin_name, admin_email, admin_password, superadmin_id) VALUES (%s, %s, %s, %s)",
-#                     (
-#                         form.name.data,
-#                         form.email.data,
-#                         hashed_password,
-#                         session["sup_adm_id"],
-#                     ),
-#                 )
-#                 connection.commit()
-#                 flash("New Admin Created successfully", "success")
-
-#                 cursor.execute(
-#                     "SELECT * FROM admin WHERE admin_email = %s", (form.email.data,)
-#                 )
-#                 admin = cursor.fetchone()
-#                 try:
-#                    log_super_admin_activity(
-#                     session["sup_adm_id"],
-#                     "Create",
-#                     "Super Admin Create",
-#                     "Super admin creatred admin '{form.name.data}'"
-#                   )
-#                except Exception as log_error:
-#                      current_app.logger.error(f"Failed to log profile view activity: {log_error}")
-#         except Exception as e:
-#             connection.rollback()
-#             flash(f"Error creating admin: {e}", "danger")
-#         finally:
-#             connection.close()
-
-#     connection = get_db_connection()
-#     adminlist = []
-#     try:
-#         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-#             query = """
-#                 SELECT a.admin_id, a.admin_name, a.admin_email, a.created_at, s.superadmin_id, s.superadmin_name
-#                 FROM admin AS a
-#                 INNER JOIN superadmin AS s ON a.superadmin_id = s.superadmin_id
-#                 ORDER BY a.admin_id ASC
-#             """
-#             cursor.execute(query)
-#             adminlist = cursor.fetchall()
-#     except Exception as e:
-#         current_app.logger.error(f"Error fetching admin list: {e}")
-#         flash("An error occurred while fetching admin list.", "danger")
-#     finally:
-#         connection.close()
-
-#     return render_template("supAdmAdmin.html", form=form, adminlist=adminlist)
-
-# # In routes.py
 
 
 @main.route("/superadmin/supadmcreateadmin", methods=["GET", "POST"])
@@ -1241,212 +1177,9 @@ def supAdmCreateAdmin():
     return render_template("supAdmAdmin.html", form=form, adminlist=adminlist)
 
 
-# @main.route("/superadmin/supadmactivities")
-# @sup_adm_login_required
-# def supAdmActivities():
-#     page = request.args.get("page", 1, type=int)
-#     per_page = 20
-#     event_type = request.args.get("event_type")
-#     admin_filter = request.args.get("admin")
-#     date_from = request.args.get("date_from")
-#     date_to = request.args.get("date_to")
-
-#     connection = get_db_connection()
-#     activities = []
-#     total = 0
-#     event_types = []
-
-#     try:
-#         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-#             query = "SELECT * FROM user_activities WHERE user_type = 'Super Admin'"
-
-#             conditions = []
-#             params = []
-
-#             if event_type:
-#                 conditions.append("event_type = %s")
-#                 params.append(event_type)
-
-#             if admin_filter:
-#                 conditions.append("user_name LIKE %s")
-#                 params.append(f"%{admin_filter}%")
-
-#             if date_from:
-#                 conditions.append("event_time >= %s")
-#                 params.append(date_from)
-
-#             if date_to:
-#                 conditions.append("event_time <= %s")
-#                 params.append(f"{date_to} 23:59:59")
-#             if conditions:
-#                 query += " AND " + " AND ".join(conditions)
-
-#             count_query = f"SELECT COUNT(*) as total FROM ({query}) as filtered"
-
-#             cursor.execute(count_query, tuple(params))
-#             total_result = cursor.fetchone()
-#             total = total_result['total'] if total_result else 0
 
 
-#             query += " ORDER BY id DESC LIMIT %s OFFSET %s"
-#             params.extend([per_page, (page - 1) * per_page])
-#             cursor.execute(query, tuple(params))
-#             activities = cursor.fetchall()
 
-#             cursor.execute(
-#                 "SELECT DISTINCT event_type FROM user_activities WHERE user_type = 'Super Admin' ORDER BY event_type"
-#             )
-#             event_types = [row["event_type"] for row in cursor.fetchall()]
-
-#     except Exception as e:
-#         current_app.logger.error(f"Error fetching superadmin activities: {e}")
-#         flash("An error occurred while fetching activities.", "danger")
-#     finally:
-#         connection.close()
-
-#     total_pages = (total + per_page - 1) // per_page if total > 0 else 0
-#     page_items, last_page = [], 0
-#     for page_num in range(1, total_pages + 1):
-#         if page_num <= 2 or page_num > total_pages - 2 or abs(page_num - page) <= 2:
-#             if last_page + 1 != page_num:
-#                 page_items.append(None)
-#             page_items.append(page_num)
-#             last_page = page_num
-
-#     pagination = {
-#         "page": page,
-#         "per_page": per_page,
-#         "total": total,
-#         "pages": total_pages,
-#         "has_prev": page > 1,
-#         "has_next": page < total_pages,
-#         "prev_num": page - 1,
-#         "next_num": page + 1,
-#         "iter_pages": lambda: page_items,
-#     }
-
-#     return render_template(
-#         "supAdmActivities.html",
-#         activities=activities,
-#         pagination=pagination,
-#         event_types=event_types,
-#         current_filters={
-#             "event_type": event_type,
-#             "admin": admin_filter,
-#             "date_from": date_from,
-#             "date_to": date_to,
-#         },
-#     )
-
-# main.route("/superadmin/supadmactivities")
-# @sup_adm_login_required
-# def supAdmActivities():
-#     page = request.args.get("page", 1, type=int)
-#     per_page = 20
-#     event_type = request.args.get("event_type")
-#     admin_filter = request.args.get("admin") # This will filter by superadmin_name
-#     date_from = request.args.get("date_from")
-#     date_to = request.args.get("date_to")
-
-#     connection = get_db_connection()
-#     activities = []
-#     total = 0
-#     event_types = []
-
-#     try:
-#         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-#             # --- START: CORE FIX ---
-#             # Base query now JOINS the two tables to get the superadmin_name
-#             base_query = """
-#                 FROM super_admin_activities AS act
-#                 JOIN superadmin AS s ON act.superadmin_id = s.superadmin_id
-#             """
-
-#             conditions = []
-#             params = []
-
-#             if event_type:
-#                 conditions.append("act.event_type = %s")
-#                 params.append(event_type)
-
-#             if admin_filter:
-#                 # Correctly filter by the name from the 'superadmin' table
-#                 conditions.append("s.superadmin_name LIKE %s")
-#                 params.append(f"%{admin_filter}%")
-
-#             if date_from:
-#                 conditions.append("act.event_time >= %s")
-#                 params.append(date_from)
-
-#             if date_to:
-#                 # Add time component to include the entire end day
-#                 conditions.append("act.event_time <= %s")
-#                 params.append(f"{date_to} 23:59:59")
-
-#             where_clause = ""
-#             if conditions:
-#                 where_clause = "WHERE " + " AND ".join(conditions)
-
-#             # Build and execute the count query first for correct pagination
-#             count_query = f"SELECT COUNT(act.id) as total {base_query} {where_clause}"
-#             cursor.execute(count_query, tuple(params))
-#             total_result = cursor.fetchone()
-#             total = total_result['total'] if total_result else 0
-
-#             # Build the main data query with all columns needed for the template
-#             select_columns = """
-#                 SELECT
-#                     act.id, act.event_time, act.event_type, act.model,
-#                     act.value, act.superadmin_ip, s.superadmin_name
-#             """
-#             main_query = f"{select_columns} {base_query} {where_clause} ORDER BY act.id DESC LIMIT %s OFFSET %s"
-
-#             # Add pagination parameters and execute
-#             final_params = list(params) # Create a copy of the params for the main query
-#             final_params.extend([per_page, (page - 1) * per_page])
-#             cursor.execute(main_query, tuple(final_params))
-#             activities = cursor.fetchall()
-
-#             # Get distinct event types from the correct table
-#             cursor.execute("SELECT DISTINCT event_type FROM super_admin_activities ORDER BY event_type")
-#             event_types = [row["event_type"] for row in cursor.fetchall()]
-#             # --- END: CORE FIX ---
-
-#     except Exception as e:
-#         current_app.logger.error(f"Error fetching superadmin activities: {e}")
-#         flash("An error occurred while fetching activities.", "danger")
-#     finally:
-#         if connection:
-#             connection.close()
-
-#     # --- Pagination and Rendering (no changes needed here) ---
-#     total_pages = (total + per_page - 1) // per_page if total > 0 else 0
-#     page_items, last_page = [], 0
-#     for page_num in range(1, total_pages + 1):
-#         if page_num <= 2 or page_num > total_pages - 2 or abs(page_num - page) <= 2:
-#             if last_page + 1 != page_num:
-#                 page_items.append(None)
-#             page_items.append(page_num)
-#             last_page = page_num
-
-#     pagination = {
-#         "page": page, "per_page": per_page, "total": total, "pages": total_pages,
-#         "has_prev": page > 1, "has_next": page < total_pages,
-#         "prev_num": page - 1, "next_num": page + 1, "iter_pages": lambda: page_items,
-#     }
-
-#     return render_template(
-#         "supAdmActivities.html",
-#         activities=activities,
-#         pagination=pagination,
-#         event_types=event_types,
-#         current_filters={
-#             "event_type": event_type,
-#             "admin": admin_filter,
-#             "date_from": date_from,
-#             "date_to": date_to,
-#         },
-#     )
 
 
 @main.route("/superadmin/supadmactivities")
@@ -1455,7 +1188,7 @@ def supAdmActivities():
     page = request.args.get("page", 1, type=int)
     per_page = 20
     event_type = request.args.get("event_type")
-    admin_filter = request.args.get("admin")  # This will filter by superadmin_name
+    admin_filter = request.args.get("admin")  
     date_from = request.args.get("date_from")
     date_to = request.args.get("date_to")
 
@@ -1466,8 +1199,7 @@ def supAdmActivities():
 
     try:
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-            # --- START: CORE FIX ---
-            # Base query now JOINS the two tables to get the superadmin_name
+            
             base_query = """
                 FROM super_admin_activities AS act
                 JOIN superadmin AS s ON act.superadmin_id = s.superadmin_id
@@ -1481,7 +1213,7 @@ def supAdmActivities():
                 params.append(event_type)
 
             if admin_filter:
-                # Correctly filter by the name from the 'superadmin' table
+                
                 conditions.append("s.superadmin_name LIKE %s")
                 params.append(f"%{admin_filter}%")
 
@@ -1490,7 +1222,7 @@ def supAdmActivities():
                 params.append(date_from)
 
             if date_to:
-                # Add time component to include the entire end day
+                
                 conditions.append("act.event_time <= %s")
                 params.append(f"{date_to} 23:59:59")
 
@@ -1498,13 +1230,13 @@ def supAdmActivities():
             if conditions:
                 where_clause = "WHERE " + " AND ".join(conditions)
 
-            # Build and execute the count query first for correct pagination
+           
             count_query = f"SELECT COUNT(act.id) as total {base_query} {where_clause}"
             cursor.execute(count_query, tuple(params))
             total_result = cursor.fetchone()
             total = total_result["total"] if total_result else 0
 
-            # Build the main data query with all columns needed for the template
+            
             select_columns = """
                 SELECT 
                     act.id, act.event_time, act.event_type, act.model, 
@@ -1512,20 +1244,20 @@ def supAdmActivities():
             """
             main_query = f"{select_columns} {base_query} {where_clause} ORDER BY act.id DESC LIMIT %s OFFSET %s"
 
-            # Add pagination parameters and execute
+            
             final_params = list(
                 params
-            )  # Create a copy of the params for the main query
+            )  
             final_params.extend([per_page, (page - 1) * per_page])
             cursor.execute(main_query, tuple(final_params))
             activities = cursor.fetchall()
 
-            # Get distinct event types from the correct table
+           
             cursor.execute(
                 "SELECT DISTINCT event_type FROM super_admin_activities ORDER BY event_type"
             )
             event_types = [row["event_type"] for row in cursor.fetchall()]
-            # --- END: CORE FIX ---
+           
 
     except Exception as e:
         current_app.logger.error(f"Error fetching superadmin activities: {e}")
@@ -1581,10 +1313,10 @@ def supAdmActivities():
     )
 
 
-# In routes.py
-@main.route("/superadmin/admin-activities") # <-- Better URL
+
+@main.route("/superadmin/admin-activities") 
 @sup_adm_login_required
-def adminActivitiesForSup(): # <-- Unique function name
+def adminActivitiesForSup(): 
     page = request.args.get("page", 1, type=int)
     per_page = 20
     event_type = request.args.get("event_type")
@@ -1599,7 +1331,7 @@ def adminActivitiesForSup(): # <-- Unique function name
 
     try:
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-            # This query logic is excellent and does not need to change.
+            
             base_query = """
                 FROM admin_subadmin_activities AS act
                 LEFT JOIN admin a ON act.admin_subadmin_mail = a.admin_email
@@ -1646,7 +1378,7 @@ def adminActivitiesForSup(): # <-- Unique function name
     finally:
         connection.close()
 
-    # Your pagination logic is correct.
+    
     total_pages = (total + per_page - 1) // per_page
     page_items, last_page = [], 0
     for page_num in range(1, total_pages + 1):
@@ -1662,10 +1394,9 @@ def adminActivitiesForSup(): # <-- Unique function name
         "prev_num": page - 1, "next_num": page + 1, "iter_pages": lambda: page_items,
     }
 
-    # --- MAJOR FIX ---
-    # Render a NEW template that extends the super admin base template.
+    
     return render_template(
-        "adminActivitiesForSup.html", # <-- Point to the new template
+        "adminActivitiesForSup.html", 
         activities=activities,
         pagination=pagination,
         event_types=event_types,
@@ -1699,7 +1430,7 @@ def admLogin():
         connection = get_db_connection()
         try:
             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-                # checking if it's an super admin
+
                 cursor.execute(
                     "SELECT * FROM superadmin WHERE superadmin_email=%s",
                     (form.email.data,),
@@ -1724,7 +1455,7 @@ def admLogin():
                         )
                     return redirect(url_for("main.supAdmDashboard"))
 
-                # checking if it's an admin
+
                 cursor.execute(
                     "SELECT * FROM admin WHERE admin_email=%s", (form.email.data,)
                 )
@@ -1778,14 +1509,7 @@ def admLogin():
                             f"Sub Admin '{user_name3}' Login.",
                         )
 
-                        # log_user_activity(
-                        #     subadmin_user["subadmin_id"],
-                        #     subadmin_user["subadmin_name"],
-                        #     "Subadmin",
-                        #     "Login",
-                        #     "Landing Page/Login",
-                        #     f"Subadmin logged in, Id: {subadmin_user['subadmin_id']}, Name: {subadmin_user['subadmin_name']}",
-                        # )
+                       
                         return redirect(url_for("main.admDashboard"))
 
         except Exception as e:
@@ -1834,18 +1558,7 @@ def admLogout():
             "Authentication",
             f"{user_name} logged out .",
         )
-        # user_id = session.get("admin_id") or session.get("subadmin_id")
-        # user_name = session.get("admin_name") or session.get("subadmin_name")
-        # user_type = session.get("user_type")
-
-        # log_user_activity(
-        #     user_id,
-        #     user_name,
-        #     user_type,
-        #     "Logout",
-        #     "Landing Page/Logout",
-        #     f"{user_type} logged out, Id: {user_id}, Name: {user_name}",
-        # )
+       
     except Exception as e:
         current_app.logger.error(f"Error logging out admin/subadmin: {e}")
 
@@ -1955,14 +1668,7 @@ def add_category():
             "Categories Page",
             f"{user_name} created New Category Called '{category_name}'",
         )
-        # log_user_activity(
-        #     session.get("admin_id") or session.get("subadmin_id"),
-        #     session.get("admin_name") or session.get("subadmin_name"),
-        #     session.get("user_type"),
-        #     "Create",
-        #     "App/Master Entries/Categories",
-        #     f"Created New Category Called '{category_name}'",
-        # )
+      
 
         flash("Category added successfully!", "success")
     except pymysql.err.IntegrityError:
@@ -2004,14 +1710,7 @@ def edit_category(cat_id):
                 f"{user_name} edited Category '{new_name}' with Category ID = '{cat_id}'",
             )
 
-            # log_user_activity(
-            #     session.get("admin_id") or session.get("subadmin_id"),
-            #     session.get("admin_name") or session.get("subadmin_name"),
-            #     session.get("user_type"),
-            #     "Edit",
-            #     "App/Master Entries/Categories",
-            #     f"Edited Category '{new_name}' with Category ID = '{cat_id}'",
-            # )
+  
 
             flash("Category updated successfully!", "success")
         else:
@@ -2043,7 +1742,7 @@ def delete_category(cate_id):
         connection = get_db_connection()
         try:
             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-                # for "log_user_activity"
+
                 cursor.execute(
                     "SELECT category_name FROM categories WHERE c_id = %s", (cate_id,)
                 )
@@ -2061,14 +1760,7 @@ def delete_category(cate_id):
                     "Categories Page",
                     f"{user_name} deleted Category '{category['category_name']}' with Category ID '{cate_id}''",
                 )
-                # log_user_activity(
-                #     session.get("admin_id") or session.get("subadmin_id"),
-                #     session.get("admin_name") or session.get("subadmin_name"),
-                #     session.get("user_type"),
-                #     "Delete",
-                #     "App/Master Entries/Categories",
-                #     f"Deleted Category '{category['category_name']}' with Category ID '{cate_id}'",
-                # )
+                
 
             flash("Category and all its sub-categories have been deleted.", "success")
         except Exception as e:
@@ -2171,14 +1863,7 @@ def add_sub_category():
             f"{user_name} Created New Sub Category Called '{sub_category_name}' with Category name '{category_name}' Category ID '{category_id}'",
         )
 
-        # log_user_activity(
-        #     session.get("admin_id") or session.get("subadmin_id"),
-        #     session.get("admin_name") or session.get("subadmin_name"),
-        #     session.get("user_type"),
-        #     "Create",
-        #     "App/Master Entries/Sub Categories",
-        #     f"Created New Sub Category Called '{sub_category_name}' with Category name '{category_name}' Category ID '{category_id}'",
-        # )
+       
 
         flash("Sub-category added successfully!", "success")
     except ValueError:
@@ -2235,14 +1920,7 @@ def edit_sub_category(sub_cat_id):
                     "Sub Categories Page",
                     f"{user_name} Edited Sub category from '{old_sub_cat['sub_category_name']}' to '{new_name}' with Sub Category ID = '{sub_cat_id}'",
                 )
-                # log_user_activity(
-                #     session.get("admin_id") or session.get("subadmin_id"),
-                #     session.get("admin_name") or session.get("subadmin_name"),
-                #     session.get("user_type"),
-                #     "Edit",
-                #     "App/Master Entries/Sub Categories",
-                #     f"Edited Sub category from '{old_sub_cat['sub_category_name']}' to '{new_name}' with Sub Category ID = '{sub_cat_id}'",
-                # )
+
 
             flash("Sub Category updated successfully!", "success")
 
@@ -2265,7 +1943,7 @@ def delete_sub_category(sub_cat_id):
         connection = get_db_connection()
         try:
             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-                # for "log_user_activity"
+
                 cursor.execute(
                     "SELECT sub_category_name FROM sub_categories WHERE sc_id = %s",
                     (sub_cat_id,),
@@ -2286,14 +1964,6 @@ def delete_sub_category(sub_cat_id):
                     "Sub Categories Page",
                     f"{user_name} Deleted Sub Category '{sub_category['sub_category_name']}' with Sub Category ID '{sub_cat_id}'",
                 )
-                # log_user_activity(
-                #     session.get("admin_id") or session.get("subadmin_id"),
-                #     session.get("admin_name") or session.get("subadmin_name"),
-                #     session.get("user_type"),
-                #     "Delete",
-                #     "App/Master Entries/Sub Categories",
-                #     f"Deleted Sub Category '{sub_category['sub_category_name']}' with Sub Category ID '{sub_cat_id}'",
-                # )
 
             flash("Sub Categories have been deleted.", "success")
         except Exception as e:
@@ -2362,14 +2032,7 @@ def add_tag():
             f"{user_name} Created New Tag Called '{tag_name}'",
         )
 
-        # log_user_activity(
-        #     session.get("admin_id") or session.get("subadmin_id"),
-        #     session.get("admin_name") or session.get("subadmin_name"),
-        #     session.get("user_type"),
-        #     "Create",
-        #     "App/Master Entries/Tags",
-        #     f"Created New Tag Called '{tag_name}'",
-        # )
+
 
         flash("Tag added successfully!", "success")
     except pymysql.err.IntegrityError:
@@ -2415,14 +2078,7 @@ def edit_tag(tag_id):
                     f"{user_name} Edited Tag from '{old_tag['tag_name']}' to '{new_name}' where Tag ID = '{tag_id}'",
                 )
 
-                # log_user_activity(
-                #     session.get("admin_id") or session.get("subadmin_id"),
-                #     session.get("admin_name") or session.get("subadmin_name"),
-                #     session.get("user_type"),
-                #     "Edit",
-                #     "App/Master Entries/Tags",
-                #     f"Edited Tag from '{old_tag['tag_name']}' to '{new_name}' where Tag ID = '{tag_id}'",
-                # )
+
 
             flash("Tag updated successfully!", "success")
 
@@ -2462,14 +2118,7 @@ def delete_tag(tag_id):
                     f"{user_name} Deleted Tag '{tag['tag_name']}' with Tag ID '{tag_id}'",
                 )
 
-                # log_user_activity(
-                #     session.get("admin_id") or session.get("subadmin_id"),
-                #     session.get("admin_name") or session.get("subadmin_name"),
-                #     session.get("user_type"),
-                #     "Delete",
-                #     "App/Master Entries/Tags",
-                #     f"Deleted Tag '{tag['tag_name']}' with Tag ID '{tag_id}'",
-                # )
+
 
             flash("Tag has been deleted.", "success")
         except Exception as e:
@@ -2561,14 +2210,6 @@ def addNewDocuments():
                     f"{user_name} Uploaded document '{original_filename}' for analysis",
                 )
 
-                # log_user_activity(
-                #     session.get("admin_id") or session.get("subadmin_id"),
-                #     session.get("admin_name") or session.get("subadmin_name"),
-                #     session.get("user_type"),
-                #     "File Upload",
-                #     "Documents/Add New",
-                #     f"Uploaded document '{original_filename}' for analysis.",
-                # )
 
                 analysis_result = analyze_document_with_openai(raw_text)
                 return jsonify(
@@ -2668,7 +2309,7 @@ def submitDocument():
             raise Exception("Failed to upload file to S3.")
 
         with connection.cursor() as cursor:
-            # --- MODIFIED: The 'tags' column has been removed from the INSERT statement ---
+
             sql = """
                 INSERT INTO documents (title, category, sub_category, file_path, 
                                        extracted_data, ocr_engine, token_count, original_filename)
@@ -2713,14 +2354,7 @@ def submitDocument():
             f"{user_name} Saved new document '{form_data.get('title')}' with S3 URL: {file_url}",
         )
 
-        # log_user_activity(
-        #     session.get("admin_id") or session.get("subadmin_id"),
-        #     session.get("admin_name") or session.get("subadmin_name"),
-        #     session.get("user_type"),
-        #     "Create",
-        #     "Documents/Submit",
-        #     f"Saved new document '{form_data.get('title')}' with S3 URL: {file_url}",
-        # )
+
 
         return jsonify({"message": "Document and extracted data saved successfully!"})
 
@@ -2924,14 +2558,7 @@ def editDocument(doc_id):
                 f"{user_name} Edited document '{title}' with ID: {doc_id}",
             )
 
-            # log_user_activity(
-            #     session.get("admin_id") or session.get("subadmin_id"),
-            #     session.get("admin_name") or session.get("subadmin_name"),
-            #     session.get("user_type"),
-            #     "Edit",
-            #     "Documents/Edit",
-            #     f"Edited document '{title}' with ID: {doc_id}",
-            # )
+
 
             flash("Document updated successfully!", "success")
             return redirect(url_for("main.documentList"))
@@ -3029,14 +2656,7 @@ def deleteDocument(doc_id):
             f"{user_name} Deleted document with ID: {doc_id}",
         )
 
-        # log_user_activity(
-        #     session.get("admin_id") or session.get("subadmin_id"),
-        #     session.get("admin_name") or session.get("subadmin_name"),
-        #     session.get("user_type"),
-        #     "Delete",
-        #     "Documents/Delete",
-        #     f"Deleted document with ID: {doc_id}",
-        # )
+
 
         flash("Document deleted successfully!", "success")
     except Exception as e:
@@ -3158,14 +2778,7 @@ def createRole():
                 f"{user_name} Created new role '{role_name}'",
             )
 
-            # log_user_activity(
-            #     session.get("admin_id") or session.get("subadmin_id"),
-            #     session.get("admin_name") or session.get("subadmin_name"),
-            #     session.get("user_type"),
-            #     "Create",
-            #     "Users/Roles",
-            #     f"Created new role '{role_name}'",
-            # )
+
 
             flash(f'Role "{role_name}" created successfully!', "success")
             return redirect(url_for("main.usersRoles"))
@@ -3266,15 +2879,6 @@ def editRole(role_id):
                 f"{user_name} Edited role '{role_name}' with ID: {role_id}",
             )
 
-            # log_user_activity(
-            #     session.get("admin_id") or session.get("subadmin_id"),
-            #     session.get("admin_name") or session.get("subadmin_name"),
-            #     session.get("user_type"),
-            #     "Edit",
-            #     "Users/Roles",
-            #     f"Edited role '{role_name}' with ID: {role_id}",
-            # )
-
             flash(f'Role "{role_name}" updated successfully!', "success")
             return redirect(url_for("main.usersRoles"))
 
@@ -3342,14 +2946,7 @@ def deleteRole(role_id):
             f"{user_name} Deleted role '{role_name}' with ID: {role_id}",
         )
 
-        # log_user_activity(
-        #     session.get("admin_id") or session.get("subadmin_id"),
-        #     session.get("admin_name") or session.get("subadmin_name"),
-        #     session.get("user_type"),
-        #     "Delete",
-        #     "Users/Roles",
-        #     f"Deleted role '{role_name}' with ID: {role_id}",
-        # )
+
 
         flash(f'Role "{role_name}" has been deleted.', "success")
 
@@ -3488,14 +3085,6 @@ def createUser():
                 f"{user_name} Created new user '{name}' with email '{email}' and role_id '{role_id}'",
             )
 
-            # log_user_activity(
-            #     session.get("admin_id") or session.get("subadmin_id"),
-            #     session.get("admin_name") or session.get("subadmin_name"),
-            #     session.get("user_type"),
-            #     "Create",
-            #     "Users/User Management",
-            #     f"Created new user '{name}' with email '{email}' and role_id '{role_id}'",
-            # )
 
             flash(f'User "{name}" created successfully!', "success")
             return redirect(url_for("main.userList"))
@@ -3625,14 +3214,7 @@ def editUser(user_id):
                 f"{user_name} Edited user '{name}' with ID: {user_id}",
             )
 
-            # log_user_activity(
-            #     session.get("admin_id") or session.get("subadmin_id"),
-            #     session.get("admin_name") or session.get("subadmin_name"),
-            #     session.get("user_type"),
-            #     "Edit",
-            #     "Users/User Management",
-            #     f"Edited user '{name}' with ID: {user_id}",
-            # )
+
 
             flash(f'User "{name}" updated successfully!', "success")
             return redirect(url_for("main.userList"))
@@ -3696,15 +3278,7 @@ def deleteUser(user_id):
                 f"{user_name} Deleted User '{subadmin['subadmin_username']}' with ID '{user_id}'",
             )
 
-            # log_user_activity(
-            #     session.get("admin_id") or session.get("subadmin_id"),
-            #     session.get("admin_name") or session.get("subadmin_name"),
-            #     session.get("user_type"),
-            #     "Delete",
-            #     "Users/User Management",
-            #     f"Deleted User '{subadmin['subadmin_username']}' with ID '{user_id}'",
-            # )
-
+     
         flash("User has been deleted successfully.", "success")
 
     except Exception as e:
@@ -3715,98 +3289,6 @@ def deleteUser(user_id):
         connection.close()
     return redirect(url_for("main.userList"))
 
-
-# @main.route("/users/activities")
-# @adm_login_required
-# @subadmin_permission_required("USER_ACTIVITIES.view_user_activities")
-# def usersActivities():
-#     page = request.args.get("page", 1, type=int)
-#     per_page = 20
-#     event_type = request.args.get("event_type")
-#     user_filter = request.args.get("user")
-#     date_from = request.args.get("date_from")
-#     date_to = request.args.get("date_to")
-
-#     connection = get_db_connection()
-#     activities = []
-#     total = 0
-#     event_types = []
-
-#     try:
-#         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-#             query = "SELECT * FROM user_activities"
-#             conditions = []
-#             params = []
-#             if event_type:
-#                 conditions.append("event_type = %s")
-#                 params.append(event_type)
-#             if user_filter:
-#                 conditions.append("user_name LIKE %s")
-#                 params.append(f"%{user_filter}%")
-#             if date_from:
-#                 conditions.append("event_time >= %s")
-#                 params.append(date_from)
-#             if date_to:
-#                 conditions.append("event_time <= %s")
-#                 params.append(f"{date_to} 23:59:59")
-
-#             if conditions:
-#                 query += " WHERE " + " AND ".join(conditions)
-
-#             count_query = "SELECT COUNT(*) as total FROM (" + query + ") as filtered"
-#             cursor.execute(count_query, tuple(params))
-#             total = cursor.fetchone()["total"]
-
-#             query += " ORDER BY id DESC LIMIT %s OFFSET %s"
-#             params.extend([per_page, (page - 1) * per_page])
-
-#             cursor.execute(query, tuple(params))
-#             activities = cursor.fetchall()
-
-#             cursor.execute(
-#                 "SELECT DISTINCT event_type FROM user_activities ORDER BY event_type"
-#             )
-#             event_types = [row["event_type"] for row in cursor.fetchall()]
-
-#     except Exception as e:
-#         current_app.logger.error(f"Error fetching user activities: {e}")
-#         flash("An error occurred while fetching user activities.", "danger")
-#     finally:
-#         connection.close()
-
-#     total_pages = (total + per_page - 1) // per_page
-#     page_items, last_page = [], 0
-#     for page_num in range(1, total_pages + 1):
-#         if page_num <= 2 or page_num > total_pages - 2 or abs(page_num - page) <= 2:
-#             if last_page + 1 != page_num:
-#                 page_items.append(None)
-#             page_items.append(page_num)
-#             last_page = page_num
-
-#     pagination = {
-#         "page": page,
-#         "per_page": per_page,
-#         "total": total,
-#         "pages": total_pages,
-#         "has_prev": page > 1,
-#         "has_next": page * per_page < total,
-#         "prev_num": page - 1,
-#         "next_num": page + 1,
-#         "iter_pages": lambda: page_items,
-#     }
-
-#     return render_template(
-#         "usersActivities.html",
-#         activities=activities,
-#         pagination=pagination,
-#         event_types=event_types,
-#         current_filters={
-#             "event_type": event_type,
-#             "user": user_filter,
-#             "date_from": date_from,
-#             "date_to": date_to,
-#         },
-#     )
 
 @main.route("/users/activities")
 @adm_login_required
@@ -3826,8 +3308,7 @@ def usersActivities():
 
     try:
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-            # --- START: CORE FIX ---
-            # Base query now reads from the correct table and joins to get user names
+
             base_query = """
                 FROM admin_subadmin_activities AS act
                 LEFT JOIN admin a ON act.admin_subadmin_mail = a.admin_email
@@ -3840,7 +3321,7 @@ def usersActivities():
                 conditions.append("act.event_type = %s")
                 params.append(event_type)
             if user_filter:
-                # FIX: Filter by the mail column in the activity table
+
                 conditions.append("act.admin_subadmin_mail LIKE %s")
                 params.append(f"%{user_filter}%")
             if date_from:
@@ -3852,12 +3333,12 @@ def usersActivities():
 
             where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
 
-            # Count query for pagination
+
             count_query = f"SELECT COUNT(act.id) as total {base_query} {where_clause}"
             cursor.execute(count_query, tuple(params))
             total = cursor.fetchone()["total"]
 
-            # Main data query with specific columns, including the user's name
+
             select_columns = """
                 SELECT
                     act.*,
@@ -3869,12 +3350,10 @@ def usersActivities():
             cursor.execute(query, tuple(params))
             activities = cursor.fetchall()
 
-            # FIX: Get distinct event types from the correct table
             cursor.execute(
                 "SELECT DISTINCT event_type FROM admin_subadmin_activities ORDER BY event_type"
             )
             event_types = [row["event_type"] for row in cursor.fetchall()]
-            # --- END: CORE FIX ---
 
     except Exception as e:
         current_app.logger.error(f"Error fetching user activities: {e}")
@@ -3897,7 +3376,7 @@ def usersActivities():
         "total": total,
         "pages": total_pages,
         "has_prev": page > 1,
-        "has_next": page < total_pages, # Corrected logic
+        "has_next": page < total_pages, 
         "prev_num": page - 1,
         "next_num": page + 1,
         "iter_pages": lambda: page_items,
