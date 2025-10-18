@@ -1423,6 +1423,106 @@ class LoginForm(FlaskForm):
     submit = SubmitField("Login")
 
 
+# @main.route("/admin/admlogin", methods=["GET", "POST"])
+# def admLogin():
+#     form = LoginForm()
+#     if form.validate_on_submit():
+#         connection = get_db_connection()
+#         try:
+#             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+
+#                 cursor.execute(
+#                     "SELECT * FROM superadmin WHERE superadmin_email=%s",
+#                     (form.email.data,),
+#                 )
+#                 superadmin = cursor.fetchone()
+
+#                 if superadmin:
+#                     if superadmin and bcrypt.checkpw(
+#                         form.password.data.encode("utf-8"),
+#                         superadmin["superadmin_password"].encode("utf-8"),
+#                     ):
+#                         session["sup_adm_id"] = superadmin["superadmin_id"]
+#                         session["sup_adm_name"] = superadmin["superadmin_name"]
+#                         session["sup_adm_mail"] = superadmin["superadmin_email"]
+
+#                         user_name = session.get("sup_adm_name", "Unknown Super Admin")
+#                         log_super_admin_activity(
+#                             session["sup_adm_id"],
+#                             "Authentication",
+#                             "Super Admin Management",
+#                             f"Super admin '{user_name}' Login.",
+#                         )
+#                     return redirect(url_for("main.supAdmDashboard"))
+
+
+#                 cursor.execute(
+#                     "SELECT * FROM admin WHERE admin_email=%s", (form.email.data,)
+#                 )
+#                 user = cursor.fetchone()
+
+#                 if user:
+#                     if bcrypt.checkpw(
+#                         form.password.data.encode("utf-8"),
+#                         user["admin_password"].encode("utf-8"),
+#                     ):
+#                         session["admin_id"] = user["admin_id"]
+#                         session["admin_name"] = user["admin_name"]
+#                         session["admin_mail"] = user["admin_email"]
+#                         session["user_type"] = "admin"
+
+#                         user_name2 = session.get("admin_name", "Unknown Admin")
+#                         log_admin_subadmin_activity(
+#                             session["admin_mail"],
+#                             "Authentication",
+#                             "Admin Management",
+#                             f"Admin '{user_name2}' Login.",
+#                         )
+#                         return redirect(url_for("main.admDashboard"))
+
+#                 cursor.execute(
+#                     "SELECT * FROM subadmin WHERE subadmin_email=%s", (form.email.data,)
+#                 )
+#                 subadmin_user = cursor.fetchone()
+
+#                 if subadmin_user:
+#                     password_hash = subadmin_user.get("subadmin_password")
+#                     if password_hash and bcrypt.checkpw(
+#                         form.password.data.encode("utf-8"),
+#                         password_hash.encode("utf-8"),
+#                     ):
+#                         session["subadmin_id"] = subadmin_user["subadmin_id"]
+#                         session["subadmin_name"] = subadmin_user["subadmin_name"]
+#                         session["subadmin_email"] = subadmin_user["subadmin_email"]
+#                         session["subadmin_username"] = subadmin_user[
+#                             "subadmin_username"
+#                         ]
+#                         session["role_id"] = subadmin_user["role_id"]
+#                         session["user_type"] = "subadmin"
+
+#                         load_subadmin_permissions()
+#                         user_name3 = session.get("subadmin_name", "Unknown Admin")
+#                         log_admin_subadmin_activity(
+#                             session["subadmin_email"],
+#                             "Authentication",
+#                             "Admin Management",
+#                             f"Sub Admin '{user_name3}' Login.",
+#                         )
+
+                       
+#                         return redirect(url_for("main.admDashboard"))
+
+#         except Exception as e:
+#             current_app.logger.error(f"Error during login: {e}")
+#             flash(f"Error during login: {str(e)}", "danger")
+#         finally:
+#             connection.close()
+
+#         flash("Login failed. Please check your email and password.", "error")
+#         return redirect(url_for("main.admLogin"))
+
+#     return render_template("admLogin.html", form=form)
+
 @main.route("/admin/admlogin", methods=["GET", "POST"])
 def admLogin():
     form = LoginForm()
@@ -1430,97 +1530,120 @@ def admLogin():
         connection = get_db_connection()
         try:
             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-
+               
                 cursor.execute(
                     "SELECT * FROM superadmin WHERE superadmin_email=%s",
                     (form.email.data,),
                 )
                 superadmin = cursor.fetchone()
-
                 if superadmin:
-                    if superadmin and bcrypt.checkpw(
+                    if bcrypt.checkpw(
                         form.password.data.encode("utf-8"),
                         superadmin["superadmin_password"].encode("utf-8"),
                     ):
+                        
                         session["sup_adm_id"] = superadmin["superadmin_id"]
                         session["sup_adm_name"] = superadmin["superadmin_name"]
                         session["sup_adm_mail"] = superadmin["superadmin_email"]
+                       
+                        try:
+                            user_name = session.get("sup_adm_name", "Unknown Super Admin")
+                            log_super_admin_activity(
+                                session["sup_adm_id"],
+                                "Authentication",
+                                "Login", 
+                                f"Super admin '{user_name}' logged in successfully.",
+                            )
+                        except Exception as log_e:
+                            current_app.logger.error(f"Failed to log super admin login: {log_e}")
+                        return redirect(url_for("main.supAdmDashboard"))
+                    else:
+                        
+                        flash("Incorrect email or password.", "danger")
+                        return redirect(url_for("main.admLogin")) 
 
-                        user_name = session.get("sup_adm_name", "Unknown Super Admin")
-                        log_super_admin_activity(
-                            session["sup_adm_id"],
-                            "Authentication",
-                            "Super Admin Management",
-                            f"Super admin '{user_name}' Login.",
-                        )
-                    return redirect(url_for("main.supAdmDashboard"))
-
-
+               
                 cursor.execute(
                     "SELECT * FROM admin WHERE admin_email=%s", (form.email.data,)
                 )
                 user = cursor.fetchone()
-
                 if user:
                     if bcrypt.checkpw(
                         form.password.data.encode("utf-8"),
                         user["admin_password"].encode("utf-8"),
                     ):
+                        
                         session["admin_id"] = user["admin_id"]
                         session["admin_name"] = user["admin_name"]
                         session["admin_mail"] = user["admin_email"]
                         session["user_type"] = "admin"
-
-                        user_name2 = session.get("admin_name", "Unknown Admin")
-                        log_admin_subadmin_activity(
-                            session["admin_mail"],
-                            "Authentication",
-                            "Admin Management",
-                            f"Admin '{user_name2}' Login.",
-                        )
+                       
+                        try:
+                             user_name2 = session.get("admin_name", "Unknown Admin")
+                             log_admin_subadmin_activity(
+                                 session["admin_mail"],
+                                 "Authentication",
+                                 "Login", 
+                                 f"Admin '{user_name2}' logged in successfully.",
+                             )
+                        except Exception as log_e:
+                            current_app.logger.error(f"Failed to log admin login: {log_e}")
                         return redirect(url_for("main.admDashboard"))
+                    else:
+                       
+                        flash("Incorrect email or password.", "danger")
+                        return redirect(url_for("main.admLogin")) 
 
+              
                 cursor.execute(
                     "SELECT * FROM subadmin WHERE subadmin_email=%s", (form.email.data,)
                 )
                 subadmin_user = cursor.fetchone()
-
                 if subadmin_user:
                     password_hash = subadmin_user.get("subadmin_password")
                     if password_hash and bcrypt.checkpw(
                         form.password.data.encode("utf-8"),
                         password_hash.encode("utf-8"),
                     ):
+                       
                         session["subadmin_id"] = subadmin_user["subadmin_id"]
                         session["subadmin_name"] = subadmin_user["subadmin_name"]
                         session["subadmin_email"] = subadmin_user["subadmin_email"]
-                        session["subadmin_username"] = subadmin_user[
-                            "subadmin_username"
-                        ]
+                        session["subadmin_username"] = subadmin_user["subadmin_username"]
                         session["role_id"] = subadmin_user["role_id"]
                         session["user_type"] = "subadmin"
-
-                        load_subadmin_permissions()
-                        user_name3 = session.get("subadmin_name", "Unknown Admin")
-                        log_admin_subadmin_activity(
-                            session["subadmin_email"],
-                            "Authentication",
-                            "Admin Management",
-                            f"Sub Admin '{user_name3}' Login.",
-                        )
-
-                       
+                        load_subadmin_permissions() 
+                      
+                        try:
+                            user_name3 = session.get("subadmin_name", "Unknown Subadmin")
+                            log_admin_subadmin_activity(
+                                session["subadmin_email"],
+                                "Authentication",
+                                "Login",
+                                f"Sub Admin '{user_name3}' logged in successfully.",
+                            )
+                        except Exception as log_e:
+                            current_app.logger.error(f"Failed to log subadmin login: {log_e}")
                         return redirect(url_for("main.admDashboard"))
+                    else:
+                        
+                        flash("Incorrect email or password.", "danger")
+                        return redirect(url_for("main.admLogin")) 
+
+               
+                flash("Incorrect email or password.", "danger") 
 
         except Exception as e:
             current_app.logger.error(f"Error during login: {e}")
-            flash(f"Error during login: {str(e)}", "danger")
+            flash(f"An error occurred during login. Please try again.", "danger")
         finally:
-            connection.close()
+            if connection:
+                connection.close()
 
-        flash("Login failed. Please check your email and password.", "error")
+       
         return redirect(url_for("main.admLogin"))
 
+   
     return render_template("admLogin.html", form=form)
 
 
